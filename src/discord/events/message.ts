@@ -3,6 +3,7 @@ import { DataSet, RegExpMatcher, englishDataset, englishRecommendedTransformers 
 import consola from 'consola';
 import emojis from '../../util/emojis';
 import env from '../../util/env';
+import { isBridgeBanned } from '../../blacklist/check-user-ban';
 
 const whitelist = ['ass', 'bitch', 'cock', 'dick', 'fuck'];
 const dataset = new DataSet<{ originalWord: string }>()
@@ -33,6 +34,16 @@ export default {
         const name = env.USE_FIRST_WORD_OF_AUTHOR_NAME
             ? (message.member.displayName.split(' ')[0] as string)
             : message.member.displayName;
+
+        // Check if user is bridge-banned (prevents Discord -> Minecraft messages)
+        if (isBridgeBanned(name)) {
+            consola.warn(`🚫 Blocked bridge message from bridge-banned Discord user: ${name}`);
+            await message.delete().catch(() => {});
+            await message.channel.send(
+                `${emojis.warning} ${message.author.username}, you are bridge-banned and cannot send messages to Minecraft.`
+            );
+            return;
+        }
 
         if (message.content.length > 250 - name.length) {
             await message.channel.send(

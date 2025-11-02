@@ -119,7 +119,7 @@ class HypixelStatsExtension {
         patterns.push({
             id: 'hypixel-general-info',
             extensionId: 'hypixel-stats',
-            pattern: /^!hypixel(?:\s+(.+))?$/i,
+            pattern: /^!hypixel(?:\s+(\S+))?/i,
             priority: 1,
             description: 'Check general Hypixel player information',
             handler: this.handleHypixelGeneralInfo.bind(this)
@@ -129,7 +129,7 @@ class HypixelStatsExtension {
         patterns.push({
             id: 'hypixel-help',
             extensionId: 'hypixel-stats',
-            pattern: /^!help$/i,
+            pattern: /^!help\b/i,
             priority: 1,
             description: 'Show available Hypixel stats commands',
             handler: this.handleHelpCommand.bind(this)
@@ -139,7 +139,7 @@ class HypixelStatsExtension {
         patterns.push({
             id: 'networth-update-plugin',
             extensionId: 'hypixel-stats',
-            pattern: /^!networth\s+updateplugin$/i,
+            pattern: /^!networth\s+updateplugin\b/i,
             priority: 1,
             description: 'Update the networth calculation library (Staff only)',
             handler: this.handleNetworthUpdatePlugin.bind(this)
@@ -151,7 +151,7 @@ class HypixelStatsExtension {
             patterns.push({
                 id: `${handler.gameMode.toLowerCase()}-stats`,
                 extensionId: 'hypixel-stats',
-                pattern: new RegExp(`^!${handler.command}(?:\\s+(.+))?$`, 'i'),
+                pattern: new RegExp(`^!${handler.command}(?:\\s+(\\S+))?`, 'i'),
                 priority: 1,
                 description: handler.description,
                 handler: isSkyBlockHandler ? 

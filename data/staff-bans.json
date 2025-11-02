@@ -1,0 +1,13 @@
+{
+  "bans": [
+    {
+      "name": "ElisiumAstra",
+      "uuid": "154cef46ead2447faeb12fd1eedd77cc",
+      "endDate": "02/11/2092",
+      "reason": "Ongeloofelijk",
+      "bannedBy": "Vliegenier04",
+      "bannedAt": "2025-11-02T17:10:25.536Z",
+      "type": "command"
+    }
+  ]
+}

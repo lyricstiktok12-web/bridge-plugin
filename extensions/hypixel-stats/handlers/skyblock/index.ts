@@ -6,7 +6,6 @@ export { skyblockOverviewHandler } from './overview';
 export { skyblockSkillsHandler } from './skills';
 export { skyblockSlayersHandler } from './slayers';
 export { skyblockDungeonsHandler } from './dungeons';
-export { skyblockCollectionsHandler } from './collections';
 export { skyblockNetworthHandler } from './networth';
 
 // Networth subcommand handlers
@@ -24,7 +23,6 @@ import { skyblockOverviewHandler } from './overview';
 import { skyblockSkillsHandler } from './skills';
 import { skyblockSlayersHandler } from './slayers';
 import { skyblockDungeonsHandler } from './dungeons';
-import { skyblockCollectionsHandler } from './collections';
 import { skyblockNetworthHandler } from './networth';
 
 // Networth subcommand handlers
@@ -43,7 +41,6 @@ export const allSkyblockHandlers = [
     skyblockSkillsHandler,
     skyblockSlayersHandler,
     skyblockDungeonsHandler,
-    skyblockCollectionsHandler,
     skyblockNetworthHandler,
     networthArmorHandler,
     networthWardrobeHandler,

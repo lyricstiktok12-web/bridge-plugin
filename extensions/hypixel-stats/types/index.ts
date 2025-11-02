@@ -274,6 +274,21 @@ export interface Arcade {
     };
 }
 
+// Cops and Crims stats interface
+export interface MCGO {
+    kills?: number;
+    deaths?: number;
+    game_wins?: number;
+    round_wins?: number;
+    shots_fired?: number;
+    headshot_kills?: number;
+    cop_kills?: number;
+    criminal_kills?: number;
+    bombs_planted?: number;
+    bombs_defused?: number;
+    coins?: number;
+}
+
 export interface SkyBlock {
     // Player Profile Info
     profiles?: { [profileName: string]: any };
@@ -491,6 +506,7 @@ export interface HypixelPlayerResponse {
         TNTGames?: TNTGames;
         Walls3?: Walls3;
         Arcade?: Arcade;
+        MCGO?: MCGO;
         SkyBlock?: SkyBlock;
         [key: string]: any;
     };

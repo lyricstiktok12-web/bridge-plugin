@@ -11,6 +11,7 @@ export { murderMysteryHandler } from './murdermystery';
 export { tntGamesHandler } from './tntgames';
 export { megaWallsHandler } from './megawalls';
 export { arcadeHandler } from './arcade';
+export { copsAndCrimsHandler } from './copsandcrims';
 
 // Export all SkyBlock handlers
 export { allSkyblockHandlers } from './skyblock/index';
@@ -24,6 +25,7 @@ import { murderMysteryHandler } from './murdermystery';
 import { tntGamesHandler } from './tntgames';
 import { megaWallsHandler } from './megawalls';
 import { arcadeHandler } from './arcade';
+import { copsAndCrimsHandler } from './copsandcrims';
 import { allSkyblockHandlers } from './skyblock/index';
 
 export const allHandlers = [
@@ -43,5 +45,6 @@ export const allHandlers = [
     tntGamesHandler,
     megaWallsHandler,
     arcadeHandler,
+    copsAndCrimsHandler,
     ...allSkyblockHandlers
 ];

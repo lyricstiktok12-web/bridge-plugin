@@ -10,6 +10,7 @@ import { consola } from 'consola';
 import { EventEmitter } from 'events';
 import recursiveWalkDir from '../util/recursive-walk-dir';
 import Bridge from '../bridge';
+import { isCommandBanned } from '../blacklist/check-user-ban';
 
 // Core interfaces for Mineflayer extensions
 interface ChatMessageContext {
@@ -31,10 +32,18 @@ interface ExtensionAPI {
         sendGuildChat: (message: string) => void;
         sendPrivateMessage: (username: string, message: string) => void;
         sendPartyMessage: (message: string) => void;
+        executeCommand: (command: string) => void;
     };
     discord: {
         sendMessage: (channelId: string, content: any) => Promise<any>;
         sendEmbed: (channelId: string, embed: any) => Promise<any>;
+        channels: {
+            blacklist: string;
+            officer: string;
+            member: string;
+            error: string;
+            command: string;
+        };
     };
     utils: Record<string, any>;
 }
@@ -120,6 +129,9 @@ export class MineflayerExtensionManager extends EventEmitter {
                 },
                 sendPartyMessage: (message: string) => {
                     bridge.mineflayer.getBot().chat(`/pc ${message}`);
+                },
+                executeCommand: (command: string) => {
+                    bridge.mineflayer.getBot().chat(command);
                 }
             },
             discord: {
@@ -136,6 +148,13 @@ export class MineflayerExtensionManager extends EventEmitter {
                         return await channel.send({ embeds: [embed] });
                     }
                     return null;
+                },
+                channels: {
+                    blacklist: process.env.BLACKLIST_CHANNEL_ID || '',
+                    officer: process.env.OFFICER_CHANNEL_ID || '',
+                    member: process.env.MEMBER_CHANNEL_ID || '',
+                    error: process.env.ERROR_CHANNEL_ID || '',
+                    command: process.env.COMMAND_CHANNEL_ID || ''
                 }
             },
             utils: {}
@@ -187,6 +206,13 @@ export class MineflayerExtensionManager extends EventEmitter {
     }
 
     /**
+     * Check if a message is a command
+     */
+    private isCommand(message: string): boolean {
+        return message.trim().startsWith('!');
+    }
+
+    /**
      * Process incoming chat message and route to appropriate extensions
      */
     public async processChatMessage(rawMessage: string): Promise<void> {
@@ -203,6 +229,14 @@ export class MineflayerExtensionManager extends EventEmitter {
         
         const messageContext = this.parseChatMessage(rawMessage);
         if (!messageContext) return;
+
+        // Check if user is command-banned and trying to use a command (in-game only)
+        if (this.isCommand(messageContext.message) && messageContext.username) {
+            if (isCommandBanned(messageContext.username)) {
+                consola.warn(`⛔ Blocked command from command-banned user: ${messageContext.username} - Command: ${messageContext.message}`);
+                return; // Don't process commands from command-banned users
+            }
+        }
 
         const patterns = Array.from(this.chatPatterns.values())
             .filter(p => this.enabledExtensions.has(p.extensionId))

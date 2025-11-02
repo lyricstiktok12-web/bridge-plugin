@@ -48,7 +48,7 @@ importers:
         specifier: ^1.11.0
         version: 1.11.0
       skyhelper-networth:
-        specifier: ^2.4.3
+        specifier: ^2.5.1
         version: 2.5.1
       winston:
         specifier: ^3.11.0

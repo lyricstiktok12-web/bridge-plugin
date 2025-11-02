@@ -1,8 +1,5 @@
 # Extensions - Ignore everything in extensions folder
-#
-
-# Extension Scripts - Ignore everything in extensions-scripts folder  
-#extensions-scripts/
+extensions/
 
 
 # Logs

@@ -5,23 +5,17 @@
  * 
  * Features:
  * - Guild statistics logging (messages, joins, leaves, etc.)
- * - Bi-weekly automated reports to officer channel
- * - Analytics commands (!analytic    private async sendPermissionDenied(context: ChatMessageContext, api: ExtensionAPI, requiredRanks: string[]): Promise<void> {
-        const userRank = context.guildRank || 'Unknown';
-        const message = `❌ Access denied. Your rank: ${userRank}, Required: ${requiredRanks.join(', ')}`;
-        
-        if (context.channel === 'Guild' || context.channel === 'Officer') {
-            api.chat.sendGuildChat(message);
-        } else if (context.channel === 'From') {
-            api.chat.sendPrivateMessage(context.username, message);
-        }
-    }onthly/today)
- * - Administrative controls (!reboot)
+ * - Daily automated reports to officer channel
+ * - Analytics commands (!analytics weekly/monthly/today)
+ * - Manual stats report (!statsreport)
+ * - Administrative controls (!reboot, !save)
+ * - Ban system (!gban, !bridgeban, !cmdban, !unban, !banlist)
  * - Permission-based access control
  * 
  * Permissions:
  * - Analytics: Mod, Leader, GM
  * - Reboot: Leader, GM only
+ * - Bans: Leader, GM, Officer
  * 
  * @author MiscGuild Bridge Bot Team
  * @version 1.0.0
@@ -49,11 +43,19 @@ interface ExtensionAPI {
         sendGuildChat: (message: string) => void;
         sendPrivateMessage: (username: string, message: string) => void;
         sendPartyMessage: (message: string) => void;
+        executeCommand: (command: string) => void;
     };
     discord: {
         send: (channelId: string, content: any, color?: number, ping?: boolean) => Promise<any>;
         sendMessage: (channelId: string, content: any) => Promise<any>;
         sendEmbed: (channelId: string, embed: any) => Promise<any>;
+        channels: {
+            blacklist: string;
+            officer: string;
+            member: string;
+            error: string;
+            command: string;
+        };
     };
     utils: Record<string, any>;
 }
@@ -70,6 +72,7 @@ interface ChatPattern {
 interface DailyStats {
     date: string;
     messagesReceived: number;
+    commandsUsed: number;
     membersJoined: number;
     membersLeft: number;
     membersKicked: number;
@@ -86,6 +89,7 @@ interface AnalyticsData {
     lastReportDate: string;
     totalStats: {
         totalMessages: number;
+        totalCommands: number;
         totalJoins: number;
         totalLeaves: number;
         totalKicks: number;
@@ -94,6 +98,21 @@ interface AnalyticsData {
         totalLevelUps: number;
         totalQuests: number;
     };
+}
+
+interface BanEntry {
+    name: string;
+    uuid: string;
+    endDate: string; // Format: DD/MM/YYYY or "Never"
+    reason: string;
+    messageId?: string; // Discord message ID for guild bans
+    bannedBy: string;
+    bannedAt: string;
+    type: 'guild' | 'bridge' | 'command';
+}
+
+interface BanList {
+    bans: BanEntry[];
 }
 
 class StaffManagementExtension {
@@ -111,6 +130,7 @@ class StaffManagementExtension {
         lastReportDate: '',
         totalStats: {
             totalMessages: 0,
+            totalCommands: 0,
             totalJoins: 0,
             totalLeaves: 0,
             totalKicks: 0,
@@ -121,7 +141,12 @@ class StaffManagementExtension {
         }
     };
     
+    private banList: BanList = {
+        bans: []
+    };
+    
     private dataFilePath: string = '';
+    private banListPath: string = '';
     private reportInterval: NodeJS.Timeout | null = null;
     private saveInterval: NodeJS.Timeout | null = null;
     private api: ExtensionAPI | null = null;
@@ -130,7 +155,8 @@ class StaffManagementExtension {
     private defaultConfig = {
         enabled: true,
         dataFile: 'guild-analytics.json',
-        biWeeklyReports: true,
+        banFile: 'staff-bans.json',
+        dailyReports: true,
         reportChannel: 'oc', // Officer channel
         debugMode: false
     };
@@ -139,6 +165,8 @@ class StaffManagementExtension {
     private analyticsRanks = ['[Mod]', '[Leader]', '[GM]', '[Guild Master]'];
     // Admin ranks that can use reboot
     private adminRanks = ['[Leader]', '[GM]', '[Guild Master]'];
+    // Staff ranks that can use ban commands
+    private banRanks = ['[Leader]', '[GM]', '[Guild Master]', 'Officer'];
 
     async init(context: any, api: ExtensionAPI): Promise<void> {
         api.log.info(`🔧 Initializing Staff Management Extension...`);
@@ -146,17 +174,22 @@ class StaffManagementExtension {
         this.api = api;
         this.config = { ...this.defaultConfig, ...(api.config || {}) };
         
-        // Set up data file path
+        // Set up data file paths
         this.dataFilePath = path.join(process.cwd(), 'data', this.config.dataFile);
+        this.banListPath = path.join(process.cwd(), 'data', this.config.banFile);
         
         // Create data directory if it doesn't exist
         await this.ensureDataDirectory();
         
-        // Load existing analytics data
+        // Load existing analytics data and ban list
         await this.loadAnalyticsData();
+        await this.loadBanList();
         
-        // Set up bi-weekly report scheduler
-        if (this.config.biWeeklyReports) {
+        // Remove any expired bans
+        await this.removeExpiredBans();
+        
+        // Set up daily report scheduler
+        if (this.config.dailyReports) {
             this.setupReportScheduler();
         }
         
@@ -280,7 +313,112 @@ class StaffManagementExtension {
                 description: 'Manually save analytics data (Staff only)',
                 handler: this.handleSaveAnalytics.bind(this)
             },
-            // Analytics logging patterns
+            {
+                id: 'stats-report',
+                extensionId: 'staff-management',
+                pattern: /^!statsreport\b/i,
+                priority: 5,
+                description: 'Manually trigger stats report to Discord (Staff only)',
+                handler: this.handleStatsReport.bind(this)
+            },
+            {
+                id: 'weekly-report',
+                extensionId: 'staff-management',
+                pattern: /^!weeklyreport\b/i,
+                priority: 5,
+                description: 'Manually trigger weekly stats report to Discord (Staff only)',
+                handler: this.handleWeeklyReport.bind(this)
+            },
+            // Ban commands (Staff only)
+            {
+                id: 'guild-ban',
+                extensionId: 'staff-management',
+                pattern: /^!gban\s+(\S+)(?:\s+(.+))?/i,
+                priority: 5,
+                description: 'Ban a user from the guild (Staff only)',
+                handler: this.handleGuildBan.bind(this)
+            },
+            {
+                id: 'bridge-ban',
+                extensionId: 'staff-management',
+                pattern: /^!bridgeban\s+(\S+)(?:\s+(.+))?/i,
+                priority: 5,
+                description: 'Ban a user from using bridge (Staff only)',
+                handler: this.handleBridgeBan.bind(this)
+            },
+            {
+                id: 'command-ban',
+                extensionId: 'staff-management',
+                pattern: /^!cmdban\s+(\S+)(?:\s+(.+))?/i,
+                priority: 5,
+                description: 'Ban a user from using bridge and commands (Staff only)',
+                handler: this.handleCommandBan.bind(this)
+            },
+            {
+                id: 'unban',
+                extensionId: 'staff-management',
+                pattern: /^!unban\s+(\S+)/i,
+                priority: 5,
+                description: 'Unban a user (Staff only)',
+                handler: this.handleUnban.bind(this)
+            },
+            {
+                id: 'banlist',
+                extensionId: 'staff-management',
+                pattern: /^!banlist\b/i,
+                priority: 5,
+                description: 'Show all banned users (Staff only)',
+                handler: this.handleBanlist.bind(this)
+            },
+            // Analytics logging patterns - HIGH PRIORITY to catch system messages
+            {
+                id: 'analytics-member-join-leave',
+                extensionId: 'staff-management',
+                pattern: /(?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+(joined|left)\s+the\s+guild!?$/i,
+                priority: 1,
+                description: 'Logs member joins and leaves for analytics',
+                handler: this.handleMemberJoinLeaveLog.bind(this)
+            },
+            {
+                id: 'analytics-member-kick',
+                extensionId: 'staff-management',
+                pattern: /(?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+was\s+kicked\s+from\s+the\s+guild\s+by\s+(?:\[.*?\]\s*)?(\w{2,17})/i,
+                priority: 1,
+                description: 'Logs member kicks for analytics',
+                handler: this.handleMemberKickLog.bind(this)
+            },
+            {
+                id: 'analytics-promote-demote',
+                extensionId: 'staff-management',
+                pattern: /(?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+was\s+(promoted|demoted)\s+from\s+(.+?)\s+to\s+(.+?)$/i,
+                priority: 1,
+                description: 'Logs promotions and demotions for analytics',
+                handler: this.handlePromoteDemoteLog.bind(this)
+            },
+            {
+                id: 'analytics-guild-level-up',
+                extensionId: 'staff-management',
+                pattern: /The\s+Guild\s+has\s+reached\s+Level\s+(\d+)!?$/i,
+                priority: 1,
+                description: 'Logs guild level ups for analytics',
+                handler: this.handleGuildLevelUpLog.bind(this)
+            },
+            {
+                id: 'analytics-quest-complete',
+                extensionId: 'staff-management',
+                pattern: /GUILD\s+QUEST\s+COMPLETED!?$/i,
+                priority: 1,
+                description: 'Logs quest completions for analytics',
+                handler: this.handleQuestCompleteLog.bind(this)
+            },
+            {
+                id: 'analytics-quest-tier-complete',
+                extensionId: 'staff-management',
+                pattern: /GUILD\s+QUEST\s+TIER\s+(\d+)\s+COMPLETED!?$/i,
+                priority: 1,
+                description: 'Logs quest tier completions for analytics',
+                handler: this.handleQuestTierCompleteLog.bind(this)
+            },
             {
                 id: 'analytics-guild-chat',
                 extensionId: 'staff-management',
@@ -288,54 +426,6 @@ class StaffManagementExtension {
                 priority: 500,
                 description: 'Logs guild chat messages for analytics',
                 handler: this.handleGuildChatLog.bind(this)
-            },
-            {
-                id: 'analytics-member-join-leave',
-                extensionId: 'staff-management',
-                pattern: /^(\[.*])?\s*(\w{2,17}).*? (joined|left) the guild!$/,
-                priority: 500,
-                description: 'Logs member joins and leaves for analytics',
-                handler: this.handleMemberJoinLeaveLog.bind(this)
-            },
-            {
-                id: 'analytics-member-kick',
-                extensionId: 'staff-management',
-                pattern: /^(\[.*])?\s*(\w{2,17}).*? was kicked from the guild by (\[.*])?\s*(\w{2,17}).*?!$/,
-                priority: 500,
-                description: 'Logs member kicks for analytics',
-                handler: this.handleMemberKickLog.bind(this)
-            },
-            {
-                id: 'analytics-promote-demote',
-                extensionId: 'staff-management',
-                pattern: /^(\[.*])?\s*(\w{2,17}).*? was (promoted|demoted) from (.*) to (.*)$/,
-                priority: 500,
-                description: 'Logs promotions and demotions for analytics',
-                handler: this.handlePromoteDemoteLog.bind(this)
-            },
-            {
-                id: 'analytics-guild-level-up',
-                extensionId: 'staff-management',
-                pattern: /^\s{19}The Guild has reached Level (\d*)!$/,
-                priority: 500,
-                description: 'Logs guild level ups for analytics',
-                handler: this.handleGuildLevelUpLog.bind(this)
-            },
-            {
-                id: 'analytics-quest-complete',
-                extensionId: 'staff-management',
-                pattern: /^\s{17}GUILD QUEST COMPLETED!$/,
-                priority: 500,
-                description: 'Logs quest completions for analytics',
-                handler: this.handleQuestCompleteLog.bind(this)
-            },
-            {
-                id: 'analytics-quest-tier-complete',
-                extensionId: 'staff-management',
-                pattern: /^\s{17}GUILD QUEST TIER (\d*) COMPLETED!$/,
-                priority: 500,
-                description: 'Logs quest tier completions for analytics',
-                handler: this.handleQuestTierCompleteLog.bind(this)
             }
         ];
     }
@@ -438,6 +528,7 @@ class StaffManagementExtension {
             this.analyticsData.dailyStats[today] = {
                 date: today,
                 messagesReceived: 0,
+                commandsUsed: 0,
                 membersJoined: 0,
                 membersLeft: 0,
                 membersKicked: 0,
@@ -459,6 +550,13 @@ class StaffManagementExtension {
                 if (playerName) {
                     dayStats.activeUsers.add(playerName);
                     dayStats.topChatters[playerName] = (dayStats.topChatters[playerName] || 0) + 1;
+                }
+                break;
+            case 'command':
+                dayStats.commandsUsed++;
+                this.analyticsData.totalStats.totalCommands++;
+                if (playerName) {
+                    dayStats.activeUsers.add(playerName);
                 }
                 break;
             case 'join':
@@ -650,6 +748,528 @@ class StaffManagementExtension {
     }
 
     /**
+     * Handle manual stats report command
+     */
+    private async handleStatsReport(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
+        if (!(await this.hasPermission(context, this.analyticsRanks))) {
+            await this.sendPermissionDenied(context, api, this.analyticsRanks);
+            return;
+        }
+
+        api.log.info(`📊 Manual daily stats report initiated by ${context.username} [${context.guildRank}]`);
+        
+        try {
+            await this.sendDailyReport();
+            
+            const message = `✅ Daily stats report sent to Discord by ${context.username}`;
+            if (context.channel === 'Guild' || context.channel === 'Officer') {
+                api.chat.sendGuildChat(message);
+            } else if (context.channel === 'From') {
+                api.chat.sendPrivateMessage(context.username, message);
+            }
+            
+            api.log.success(`📊 Daily stats report manually sent by ${context.username}`);
+        } catch (error) {
+            const errorMessage = `❌ Failed to send daily stats report: ${error}`;
+            if (context.channel === 'Guild' || context.channel === 'Officer') {
+                api.chat.sendGuildChat(errorMessage);
+            } else if (context.channel === 'From') {
+                api.chat.sendPrivateMessage(context.username, errorMessage);
+            }
+            
+            api.log.error(`❌ Failed to manually send daily stats report:`, error);
+        }
+    }
+
+    /**
+     * Handle manual weekly report command
+     */
+    private async handleWeeklyReport(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
+        if (!(await this.hasPermission(context, this.analyticsRanks))) {
+            await this.sendPermissionDenied(context, api, this.analyticsRanks);
+            return;
+        }
+
+        api.log.info(`📊 Manual weekly report initiated by ${context.username} [${context.guildRank}]`);
+        
+        try {
+            await this.sendWeeklyReport();
+            
+            const message = `✅ Weekly report sent to Discord by ${context.username}`;
+            if (context.channel === 'Guild' || context.channel === 'Officer') {
+                api.chat.sendGuildChat(message);
+            } else if (context.channel === 'From') {
+                api.chat.sendPrivateMessage(context.username, message);
+            }
+            
+            api.log.success(`📊 Weekly report manually sent by ${context.username}`);
+        } catch (error) {
+            const errorMessage = `❌ Failed to send weekly report: ${error}`;
+            if (context.channel === 'Guild' || context.channel === 'Officer') {
+                api.chat.sendGuildChat(errorMessage);
+            } else if (context.channel === 'From') {
+                api.chat.sendPrivateMessage(context.username, errorMessage);
+            }
+            
+            api.log.error(`❌ Failed to manually send weekly report:`, error);
+        }
+    }
+
+    /**
+     * Ban system handlers
+     */
+    
+    /**
+     * Parse duration string and convert to DD/MM/YYYY format
+     * Supports: 5m (minutes), 30d (days), 6mo (months), 1y (years), never, or DD/MM/YYYY
+     */
+    private parseDuration(duration: string): string {
+        // If it's already in DD/MM/YYYY format, return as-is
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(duration)) {
+            return duration;
+        }
+
+        // If it's "never", return as-is
+        if (duration.toLowerCase() === 'never') {
+            return 'Never';
+        }
+
+        // Parse duration patterns
+        const minuteMatch = duration.match(/^(\d+)m$/i);
+        const dayMatch = duration.match(/^(\d+)d$/i);
+        const monthMatch = duration.match(/^(\d+)mo$/i);
+        const yearMatch = duration.match(/^(\d+)y$/i);
+
+        const now = new Date();
+        let targetDate: Date;
+
+        if (minuteMatch) {
+            const minutes = parseInt(minuteMatch[1]);
+            targetDate = new Date(now.getTime() + minutes * 60 * 1000);
+        } else if (dayMatch) {
+            const days = parseInt(dayMatch[1]);
+            targetDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+        } else if (monthMatch) {
+            const months = parseInt(monthMatch[1]);
+            targetDate = new Date(now);
+            targetDate.setMonth(targetDate.getMonth() + months);
+        } else if (yearMatch) {
+            const years = parseInt(yearMatch[1]);
+            targetDate = new Date(now);
+            targetDate.setFullYear(targetDate.getFullYear() + years);
+        } else {
+            // Invalid format, return the original
+            return duration;
+        }
+
+        // Format as DD/MM/YYYY
+        const day = String(targetDate.getDate()).padStart(2, '0');
+        const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+        const year = targetDate.getFullYear();
+
+        return `${day}/${month}/${year}`;
+    }
+
+    /**
+     * Fetch Mojang UUID for a username
+     */
+    private async fetchMojangUUID(username: string): Promise<{ uuid: string; name: string } | null> {
+        try {
+            const response = await fetch(`https://api.mojang.com/users/profiles/minecraft/${username}`);
+            if (!response.ok) return null;
+            const data: any = await response.json();
+            return { uuid: data.id, name: data.name };
+        } catch (error) {
+            return null;
+        }
+    }
+
+    /**
+     * Check if a ban has expired
+     */
+    private isBanExpired(endDate: string): boolean {
+        if (endDate.toLowerCase() === 'never') return false;
+        
+        // Parse DD/MM/YYYY format
+        const [day, month, year] = endDate.split('/').map(Number);
+        const expiryDate = new Date(year, month - 1, day);
+        return new Date() > expiryDate;
+    }
+
+    /**
+     * Remove expired bans
+     */
+    private async removeExpiredBans(): Promise<void> {
+        const before = this.banList.bans.length;
+        
+        // Filter out expired bans
+        const activeBans = this.banList.bans.filter(ban => !this.isBanExpired(ban.endDate));
+        const expiredBans = this.banList.bans.filter(ban => this.isBanExpired(ban.endDate));
+        
+        // Delete Discord messages and blacklist entries for expired guild bans
+        for (const ban of expiredBans) {
+            if (ban.type === 'guild') {
+                try {
+                    // Remove from main blacklist file
+                    const blacklistPath = path.join(process.cwd(), 'src', 'blacklist', '_blacklist.json');
+                    const blacklistData = await fs.readFile(blacklistPath, 'utf8');
+                    const blacklist = JSON.parse(blacklistData);
+                    const index = blacklist.findIndex((entry: any) => entry.uuid === ban.uuid);
+                    if (index !== -1) {
+                        blacklist.splice(index, 1);
+                        await fs.writeFile(blacklistPath, JSON.stringify(blacklist, null, 2));
+                    }
+                } catch (error) {
+                    this.api?.log.error(`Failed to remove expired ban from blacklist: ${ban.name}`, error);
+                }
+            }
+        }
+        
+        this.banList.bans = activeBans;
+        
+        if (expiredBans.length > 0) {
+            await this.saveBanList();
+            this.api?.log.info(`🕒 Removed ${expiredBans.length} expired ban(s): ${expiredBans.map(b => b.name).join(', ')}`);
+        }
+    }
+
+    private async handleGuildBan(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
+        if (!(await this.hasPermission(context, this.banRanks))) {
+            await this.sendPermissionDenied(context, api, this.banRanks);
+            return;
+        }
+
+        // matches[1] = username, matches[2] = rest of arguments
+        const targetUsername = context.matches?.[1];
+        const restArgs = context.matches?.[2]?.split(' ') || [];
+        
+        if (!targetUsername || restArgs.length < 2) {
+            api.chat.sendGuildChat('❌ Usage: !gban <username> <duration> <reason>');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            api.chat.sendGuildChat('❌ Duration: 30d (days), 6mo (months), 1y (year), 5m (minutes), never, or DD/MM/YYYY');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            api.chat.sendGuildChat('❌ Example: !gban Player123 30d Harassment');
+            return;
+        }
+
+        const durationInput = restArgs[0];
+        const endDate = this.parseDuration(durationInput);
+        const reason = restArgs.slice(1).join(' ');
+
+        api.log.info(`🔨 Guild ban initiated by ${context.username} on ${targetUsername}`);
+
+        // Fetch Mojang UUID
+        const mojangProfile = await this.fetchMojangUUID(targetUsername);
+        if (!mojangProfile) {
+            api.chat.sendGuildChat(`❌ Could not find Minecraft player: ${targetUsername}`);
+            return;
+        }
+
+        // Check if already banned
+        const existing = this.banList.bans.find(b => b.uuid === mojangProfile.uuid);
+        if (existing) {
+            api.chat.sendGuildChat(`❌ ${mojangProfile.name} is already banned (${existing.type} ban)`);
+            return;
+        }
+
+        let messageId: string | undefined;
+
+        // Send to Discord blacklist channel if available
+        try {
+            if (api.discord && api.discord.sendEmbed && api.discord.channels.blacklist) {
+                const embed = {
+                    title: mojangProfile.name,
+                    color: 0xFF0000,
+                    url: `http://plancke.io/hypixel/player/stats/${mojangProfile.uuid}`,
+                    thumbnail: {
+                        url: `https://visage.surgeplay.com/full/${mojangProfile.uuid}.png`
+                    },
+                    fields: [
+                        { name: 'End:', value: endDate, inline: false },
+                        { name: 'Reason:', value: reason, inline: false }
+                    ],
+                    footer: {
+                        text: mojangProfile.uuid
+                    },
+                    timestamp: new Date().toISOString()
+                };
+
+                const message = await api.discord.sendEmbed(api.discord.channels.blacklist, embed);
+                messageId = message?.id;
+            }
+        } catch (error) {
+            api.log.error('Failed to send blacklist embed:', error);
+        }
+
+        // Add to ban list
+        this.banList.bans.push({
+            name: mojangProfile.name,
+            uuid: mojangProfile.uuid,
+            endDate,
+            reason,
+            messageId,
+            bannedBy: context.username,
+            bannedAt: new Date().toISOString(),
+            type: 'guild'
+        });
+
+        // Add to main blacklist file
+        const blacklistPath = path.join(process.cwd(), 'src', 'blacklist', '_blacklist.json');
+        try {
+            const blacklistData = await fs.readFile(blacklistPath, 'utf8');
+            const blacklist = JSON.parse(blacklistData);
+            
+            if (!blacklist.some((entry: any) => entry.uuid === mojangProfile.uuid)) {
+                blacklist.push({
+                    name: mojangProfile.name,
+                    uuid: mojangProfile.uuid,
+                    endDate,
+                    reason,
+                    messageId
+                });
+                await fs.writeFile(blacklistPath, JSON.stringify(blacklist, null, 2));
+            }
+        } catch (error) {
+            api.log.error('Failed to update blacklist:', error);
+        }
+
+        await this.saveBanList();
+
+        // Kick from guild
+        api.chat.executeCommand(`/g kick ${mojangProfile.name} Blacklisted by ${context.username}. Mistake? .gg/misc -> Appeal`);
+        api.chat.sendGuildChat(`🔨 ${mojangProfile.name} has been guild banned by ${context.username} until ${endDate}`);
+        api.log.success(`🔨 ${mojangProfile.name} guild banned by ${context.username}`);
+    }
+
+    private async handleBridgeBan(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
+        if (!(await this.hasPermission(context, this.banRanks))) {
+            await this.sendPermissionDenied(context, api, this.banRanks);
+            return;
+        }
+
+        // matches[1] = username, matches[2] = rest of arguments
+        const targetUsername = context.matches?.[1];
+        const restArgs = context.matches?.[2]?.split(' ') || [];
+        
+        if (!targetUsername || restArgs.length < 2) {
+            api.chat.sendGuildChat('❌ Usage: !bridgeban <username> <duration> <reason>');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            api.chat.sendGuildChat('❌ Duration: 30d (days), 6mo (months), 1y (year), 5m (minutes), never, or DD/MM/YYYY');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            api.chat.sendGuildChat('❌ Example: !bridgeban Player123 7d Spam');
+            return;
+        }
+
+        const durationInput = restArgs[0];
+        const endDate = this.parseDuration(durationInput);
+        const reason = restArgs.slice(1).join(' ');
+
+        api.log.info(`🚫 Bridge ban initiated by ${context.username} on ${targetUsername}`);
+
+        const mojangProfile = await this.fetchMojangUUID(targetUsername);
+        if (!mojangProfile) {
+            api.chat.sendGuildChat(`❌ Could not find Minecraft player: ${targetUsername}`);
+            return;
+        }
+
+        const existing = this.banList.bans.find(b => b.uuid === mojangProfile.uuid);
+        if (existing) {
+            api.chat.sendGuildChat(`❌ ${mojangProfile.name} is already banned (${existing.type} ban)`);
+            return;
+        }
+
+        this.banList.bans.push({
+            name: mojangProfile.name,
+            uuid: mojangProfile.uuid,
+            endDate,
+            reason,
+            bannedBy: context.username,
+            bannedAt: new Date().toISOString(),
+            type: 'bridge'
+        });
+
+        await this.saveBanList();
+
+        api.chat.sendGuildChat(`🚫 ${mojangProfile.name} has been bridge banned by ${context.username} until ${endDate}`);
+        api.log.success(`🚫 ${mojangProfile.name} bridge banned by ${context.username}`);
+    }
+
+    private async handleCommandBan(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
+        if (!(await this.hasPermission(context, this.banRanks))) {
+            await this.sendPermissionDenied(context, api, this.banRanks);
+            return;
+        }
+
+        // matches[1] = username, matches[2] = rest of arguments
+        const targetUsername = context.matches?.[1];
+        const restArgs = context.matches?.[2]?.split(' ') || [];
+        
+        if (!targetUsername || restArgs.length < 2) {
+            api.chat.sendGuildChat('❌ Usage: !cmdban <username> <duration> <reason>');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            api.chat.sendGuildChat('❌ Duration: 30d (days), 6mo (months), 1y (year), 5m (minutes), never, or DD/MM/YYYY');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            api.chat.sendGuildChat('❌ Example: !cmdban Player123 14d Command abuse');
+            return;
+        }
+
+        const durationInput = restArgs[0];
+        const endDate = this.parseDuration(durationInput);
+        const reason = restArgs.slice(1).join(' ');
+
+        api.log.info(`⛔ Command ban initiated by ${context.username} on ${targetUsername}`);
+
+        const mojangProfile = await this.fetchMojangUUID(targetUsername);
+        if (!mojangProfile) {
+            api.chat.sendGuildChat(`❌ Could not find Minecraft player: ${targetUsername}`);
+            return;
+        }
+
+        const existing = this.banList.bans.find(b => b.uuid === mojangProfile.uuid);
+        if (existing) {
+            api.chat.sendGuildChat(`❌ ${mojangProfile.name} is already banned (${existing.type} ban)`);
+            return;
+        }
+
+        this.banList.bans.push({
+            name: mojangProfile.name,
+            uuid: mojangProfile.uuid,
+            endDate,
+            reason,
+            bannedBy: context.username,
+            bannedAt: new Date().toISOString(),
+            type: 'command'
+        });
+
+        await this.saveBanList();
+
+        api.chat.sendGuildChat(`⛔ ${mojangProfile.name} has been command banned by ${context.username} until ${endDate}`);
+        api.log.success(`⛔ ${mojangProfile.name} command banned by ${context.username}`);
+    }
+
+    private async handleUnban(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
+        if (!(await this.hasPermission(context, this.banRanks))) {
+            await this.sendPermissionDenied(context, api, this.banRanks);
+            return;
+        }
+
+        const targetUsername = context.matches?.[1];
+        if (!targetUsername) {
+            api.chat.sendGuildChat('❌ Usage: !unban <username>');
+            return;
+        }
+
+        api.log.info(`✅ Unban initiated by ${context.username} for ${targetUsername}`);
+
+        // Try to fetch UUID
+        const mojangProfile = await this.fetchMojangUUID(targetUsername);
+        const searchUUID = mojangProfile?.uuid.toLowerCase();
+        const searchName = targetUsername.toLowerCase();
+
+        // Find and remove ban
+        const banIndex = this.banList.bans.findIndex(
+            ban => ban.name.toLowerCase() === searchName || (searchUUID && ban.uuid.toLowerCase() === searchUUID)
+        );
+
+        if (banIndex === -1) {
+            api.chat.sendGuildChat(`❌ ${targetUsername} is not banned`);
+            return;
+        }
+
+        const ban = this.banList.bans[banIndex];
+        this.banList.bans.splice(banIndex, 1);
+
+        // Remove from blacklist if it was a guild ban
+        if (ban.type === 'guild') {
+            const blacklistPath = path.join(process.cwd(), 'src', 'blacklist', '_blacklist.json');
+            try {
+                const blacklistData = await fs.readFile(blacklistPath, 'utf8');
+                const blacklist = JSON.parse(blacklistData);
+                
+                const blacklistIndex = blacklist.findIndex(
+                    (entry: any) => entry.uuid === ban.uuid
+                );
+                if (blacklistIndex !== -1) {
+                    blacklist.splice(blacklistIndex, 1);
+                    await fs.writeFile(blacklistPath, JSON.stringify(blacklist, null, 2));
+                }
+            } catch (error) {
+                api.log.error('Failed to update blacklist:', error);
+            }
+        }
+
+        await this.saveBanList();
+        api.chat.sendGuildChat(`✅ ${ban.name} has been unbanned by ${context.username} (was ${ban.type} banned)`);
+        api.log.success(`✅ ${ban.name} unbanned by ${context.username}`);
+    }
+
+    private async handleBanlist(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
+        if (!(await this.hasPermission(context, this.banRanks))) {
+            await this.sendPermissionDenied(context, api, this.banRanks);
+            return;
+        }
+
+        const guildBans = this.banList.bans.filter(b => b.type === 'guild');
+        const bridgeBans = this.banList.bans.filter(b => b.type === 'bridge');
+        const cmdBans = this.banList.bans.filter(b => b.type === 'command');
+
+        const sendMessage = (msg: string) => {
+            if (context.channel === 'Guild' || context.channel === 'Officer') {
+                api.chat.sendGuildChat(msg);
+            } else if (context.channel === 'From') {
+                api.chat.sendPrivateMessage(context.username, msg);
+            }
+        };
+
+        const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+        // Send header
+        sendMessage('📋 Ban List:');
+        await delay(500);
+
+        // Send guild bans
+        sendMessage(`🔨 Guild Bans (${guildBans.length}):`);
+        await delay(500);
+        if (guildBans.length === 0) {
+            sendMessage('  None');
+            await delay(500);
+        } else {
+            for (const ban of guildBans) {
+                sendMessage(`  • ${ban.name} - Expires: ${ban.endDate} - Reason: ${ban.reason}`);
+                await delay(500);
+            }
+        }
+
+        // Send bridge bans
+        sendMessage(`🚫 Bridge Bans (${bridgeBans.length}):`);
+        await delay(500);
+        if (bridgeBans.length === 0) {
+            sendMessage('  None');
+            await delay(500);
+        } else {
+            for (const ban of bridgeBans) {
+                sendMessage(`  • ${ban.name} - Expires: ${ban.endDate} - Reason: ${ban.reason}`);
+                await delay(500);
+            }
+        }
+
+        // Send command bans
+        sendMessage(`⛔ Command Bans (${cmdBans.length}):`);
+        await delay(500);
+        if (cmdBans.length === 0) {
+            sendMessage('  None');
+            await delay(500);
+        } else {
+            for (const ban of cmdBans) {
+                sendMessage(`  • ${ban.name} - Expires: ${ban.endDate} - Reason: ${ban.reason}`);
+                await delay(500);
+            }
+        }
+
+        api.log.info(`📋 Ban list requested by ${context.username}`);
+    }
+
+    /**
      * Analytics logging handlers
      */
     private async handleGuildChatLog(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
@@ -671,9 +1291,30 @@ class StaffManagementExtension {
             const playerName = context.matches[1]; // First capture group is username
             const message = context.matches[2];    // Second capture group is message
             
-            await this.logEvent('message', playerName);
-            if (this.config.debugMode) {
-                api.log.info(`📊 Logged guild chat message from ${playerName}: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`);
+            // Check if it's a command (starts with !)
+            const isCommand = message.trim().startsWith('!');
+            
+            // Don't log bot's own command responses
+            const isBotResponse = context.username === 'MiscManager' && message.includes('[');
+            
+            if (isBotResponse) {
+                // Skip logging bot's command responses
+                if (this.config.debugMode) {
+                    api.log.info(`📊 Skipped bot response from analytics`);
+                }
+                return;
+            }
+            
+            if (isCommand) {
+                await this.logEvent('command', playerName);
+                if (this.config.debugMode) {
+                    api.log.info(`📊 Logged command from ${playerName}: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`);
+                }
+            } else {
+                await this.logEvent('message', playerName);
+                if (this.config.debugMode) {
+                    api.log.info(`📊 Logged guild chat message from ${playerName}: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`);
+                }
             }
             return;
         }
@@ -681,9 +1322,15 @@ class StaffManagementExtension {
         // Fallback: Only log if it was correctly parsed by the extension manager
         if (context.channel === 'Guild' || context.channel === 'Officer') {
             const playerName = context.username;
-            await this.logEvent('message', playerName);
-            if (this.config.debugMode) {
-                api.log.info(`📊 Logged ${context.channel.toLowerCase()} chat message from ${playerName}`);
+            const message = context.message;
+            const isCommand = message.trim().startsWith('!');
+            const isBotResponse = context.username === 'MiscManager' && message.includes('[');
+            
+            if (!isBotResponse) {
+                await this.logEvent(isCommand ? 'command' : 'message', playerName);
+                if (this.config.debugMode) {
+                    api.log.info(`📊 Logged ${context.channel.toLowerCase()} ${isCommand ? 'command' : 'chat message'} from ${playerName}`);
+                }
             }
         } else {
             // Debug log for pattern mismatch
@@ -696,19 +1343,24 @@ class StaffManagementExtension {
     private async handleMemberJoinLeaveLog(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
         if (!this.config.enabled) return;
         
-        // Match against raw message for system notifications
-        const match = context.raw.match(/(\[.*\])?\s*(\w{2,17}).*? (joined|left) the guild!$/);
-        if (!match) return;
+        // Use the regex pattern match: (?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+(joined|left)\s+the\s+guild!?$
+        const match = context.raw.match(/(?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+(joined|left)\s+the\s+guild!?$/i);
+        if (!match) {
+            if (this.config.debugMode) {
+                api.log.warn(`🔍 Join/Leave pattern didn't match: "${context.raw}"`);
+            }
+            return;
+        }
         
-        const playerName = match[2];
-        const type = match[3];
+        const playerName = match[1];  // First capture group is the username
+        const action = match[2];      // Second capture group is 'joined' or 'left'
         
-        if (type === 'joined') {
+        if (action.toLowerCase() === 'joined') {
             await this.logEvent('join', playerName);
-            api.log.debug(`📊 Logged guild join: ${playerName}`);
-        } else if (type === 'left') {
+            api.log.info(`📊 Logged guild join: ${playerName}`);
+        } else if (action.toLowerCase() === 'left') {
             await this.logEvent('leave', playerName);
-            api.log.debug(`📊 Logged guild leave: ${playerName}`);
+            api.log.info(`📊 Logged guild leave: ${playerName}`);
         }
     }
 
@@ -725,69 +1377,95 @@ class StaffManagementExtension {
     private async handleMemberKickLog(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
         if (!this.config.enabled) return;
         
-        // Match against raw message for system notifications
-        const match = context.raw.match(/(\[.*\])?\s*(\w{2,17}).*? was kicked from the guild by\s+(.+)!$/);
-        if (!match) return;
+        // Use the regex pattern match: (?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+was\s+kicked\s+from\s+the\s+guild\s+by\s+(?:\[.*?\]\s*)?(\w{2,17})
+        const match = context.raw.match(/(?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+was\s+kicked\s+from\s+the\s+guild\s+by\s+(?:\[.*?\]\s*)?(\w{2,17})/i);
+        if (!match) {
+            if (this.config.debugMode) {
+                api.log.warn(`🔍 Kick pattern didn't match: "${context.raw}"`);
+            }
+            return;
+        }
         
-        const playerName = match[2];
+        const playerName = match[1];   // First capture group is the kicked player
+        const kickerName = match[2];   // Second capture group is the kicker
         await this.logEvent('kick', playerName);
-        api.log.debug(`📊 Logged guild kick: ${playerName}`);
+        api.log.info(`📊 Logged guild kick: ${playerName} (kicked by ${kickerName})`);
     }
 
     private async handlePromoteDemoteLog(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
         if (!this.config.enabled) return;
         
-        // Match against raw message for system notifications
-        const match = context.raw.match(/^(\[.*])?\s*(\w{2,17}).*? was (promoted|demoted) from (.*) to (.*)$/);
-        if (!match) return;
+        // Use the regex pattern match: (?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+was\s+(promoted|demoted)\s+from\s+(.+?)\s+to\s+(.+?)$
+        const match = context.raw.match(/(?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+was\s+(promoted|demoted)\s+from\s+(.+?)\s+to\s+(.+?)$/i);
+        if (!match) {
+            if (this.config.debugMode) {
+                api.log.warn(`🔍 Promote/Demote pattern didn't match: "${context.raw}"`);
+            }
+            return;
+        }
         
-        const playerName = match[2];
-        const action = match[3]; // 'promoted' or 'demoted'
-        const fromRank = match[4];
-        const toRank = match[5];
+        const playerName = match[1];  // First capture group is the username
+        const action = match[2];      // Second capture group is 'promoted' or 'demoted'
+        const fromRank = match[3];    // Third capture group is the from rank
+        const toRank = match[4];      // Fourth capture group is the to rank
         
-        if (action === 'promoted') {
+        if (action.toLowerCase() === 'promoted') {
             await this.logEvent('promotion', playerName);
-            api.log.debug(`📊 Logged guild promotion: ${playerName} from ${fromRank} to ${toRank}`);
-        } else if (action === 'demoted') {
+            api.log.info(`📊 Logged guild promotion: ${playerName} from ${fromRank} to ${toRank}`);
+        } else if (action.toLowerCase() === 'demoted') {
             await this.logEvent('demotion', playerName);
-            api.log.debug(`📊 Logged guild demotion: ${playerName} from ${fromRank} to ${toRank}`);
+            api.log.info(`📊 Logged guild demotion: ${playerName} from ${fromRank} to ${toRank}`);
         }
     }
 
     private async handleGuildLevelUpLog(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
         if (!this.config.enabled) return;
         
-        // Match against raw message for system notifications
-        const match = context.raw.match(/^\s{19}The Guild has reached Level (\d*)!$/);
-        if (!match) return;
+        // Use the regex pattern match: The\s+Guild\s+has\s+reached\s+Level\s+(\d+)!?$
+        const match = context.raw.match(/The\s+Guild\s+has\s+reached\s+Level\s+(\d+)!?$/i);
+        if (!match) {
+            if (this.config.debugMode) {
+                api.log.warn(`🔍 Guild level up pattern didn't match: "${context.raw}"`);
+            }
+            return;
+        }
         
         const newLevel = match[1];
         await this.logEvent('guildLevelUp', 'GUILD');
-        api.log.debug(`📊 Logged guild level up to level ${newLevel}`);
+        api.log.info(`📊 🎉 Logged guild level up to level ${newLevel}!`);
     }
 
     private async handleQuestCompleteLog(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
         if (!this.config.enabled) return;
         
-        // Match against raw message for system notifications
-        const match = context.raw.match(/^\s{17}GUILD QUEST COMPLETED!$/);
-        if (!match) return;
+        // Use the regex pattern match: GUILD\s+QUEST\s+COMPLETED!?$
+        const match = context.raw.match(/GUILD\s+QUEST\s+COMPLETED!?$/i);
+        if (!match) {
+            if (this.config.debugMode) {
+                api.log.warn(`🔍 Quest complete pattern didn't match: "${context.raw}"`);
+            }
+            return;
+        }
         
         await this.logEvent('questComplete', 'GUILD');
-        api.log.debug(`📊 Logged guild quest completion`);
+        api.log.info(`📊 🎯 Logged guild quest completion!`);
     }
 
     private async handleQuestTierCompleteLog(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
         if (!this.config.enabled) return;
         
-        // Match against raw message for system notifications  
-        const match = context.raw.match(/^\s{17}GUILD QUEST TIER (\d*) COMPLETED!$/);
-        if (!match) return;
+        // Use the regex pattern match: GUILD\s+QUEST\s+TIER\s+(\d+)\s+COMPLETED!?$
+        const match = context.raw.match(/GUILD\s+QUEST\s+TIER\s+(\d+)\s+COMPLETED!?$/i);
+        if (!match) {
+            if (this.config.debugMode) {
+                api.log.warn(`🔍 Quest tier complete pattern didn't match: "${context.raw}"`);
+            }
+            return;
+        }
         
         const tier = match[1];
         await this.logEvent('questComplete', 'GUILD');
-        api.log.debug(`📊 Logged guild quest tier ${tier} completion`);
+        api.log.info(`📊 🎯 Logged guild quest tier ${tier} completion!`);
     }
 
     /**
@@ -798,6 +1476,7 @@ class StaffManagementExtension {
         const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
         
         let totalMessages = 0;
+        let totalCommands = 0;
         let totalJoins = 0;
         let totalLeaves = 0;
         let totalKicks = 0;
@@ -809,6 +1488,7 @@ class StaffManagementExtension {
             
             if (dayStats) {
                 totalMessages += dayStats.messagesReceived;
+                totalCommands += dayStats.commandsUsed || 0;
                 totalJoins += dayStats.membersJoined;
                 totalLeaves += dayStats.membersLeft;
                 totalKicks += dayStats.membersKicked;
@@ -818,6 +1498,7 @@ class StaffManagementExtension {
 
         return {
             totalMessages,
+            totalCommands,
             totalJoins,
             totalLeaves,
             totalKicks,
@@ -834,6 +1515,7 @@ class StaffManagementExtension {
         const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
         
         let totalMessages = 0;
+        let totalCommands = 0;
         let totalJoins = 0;
         let totalLeaves = 0;
         let totalKicks = 0;
@@ -845,6 +1527,7 @@ class StaffManagementExtension {
             
             if (dayStats) {
                 totalMessages += dayStats.messagesReceived;
+                totalCommands += dayStats.commandsUsed || 0;
                 totalJoins += dayStats.membersJoined;
                 totalLeaves += dayStats.membersLeft;
                 totalKicks += dayStats.membersKicked;
@@ -854,6 +1537,7 @@ class StaffManagementExtension {
 
         return {
             totalMessages,
+            totalCommands,
             totalJoins,
             totalLeaves,
             totalKicks,
@@ -877,12 +1561,12 @@ class StaffManagementExtension {
     }
 
     /**
-     * Set up bi-weekly report scheduler
+     * Set up daily report scheduler
      */
     private setupReportScheduler(): void {
-        // Check every hour if it's time for a bi-weekly report
+        // Check every hour if it's time for a daily report
         this.reportInterval = setInterval(async () => {
-            await this.checkBiWeeklyReport();
+            await this.checkDailyReport();
         }, 60 * 60 * 1000); // Every hour
     }
 
@@ -890,55 +1574,212 @@ class StaffManagementExtension {
      * Set up auto-save timer (every 15 minutes)
      */
     private setupAutoSave(): void {
-        // Save analytics data every 15 minutes
+        // Save analytics data and ban list every 15 minutes
         this.saveInterval = setInterval(async () => {
             try {
                 await this.saveAnalyticsData();
+                await this.saveBanList();
                 if (this.api?.log) {
-                    this.api.log.info('💾 Auto-saved analytics data');
+                    this.api.log.info('💾 Auto-saved analytics and ban data');
                 }
             } catch (error) {
                 if (this.api?.log) {
-                    this.api.log.error('❌ Failed to auto-save analytics data:', error);
+                    this.api.log.error('❌ Failed to auto-save data:', error);
                 }
             }
         }, 15 * 60 * 1000); // Every 15 minutes
     }
 
     /**
-     * Check if it's time for bi-weekly report
+     * Check if it's time for daily report (6 PM EST)
      */
-    private async checkBiWeeklyReport(): Promise<void> {
-        const today = new Date().toISOString().split('T')[0];
-        const lastReport = new Date(this.analyticsData.lastReportDate || '2024-01-01');
-        const daysSinceReport = Math.floor((new Date().getTime() - lastReport.getTime()) / (1000 * 60 * 60 * 24));
-
-        if (daysSinceReport >= 14) {
-            await this.sendBiWeeklyReport();
+    private async checkDailyReport(): Promise<void> {
+        const now = new Date();
+        
+        // Convert to EST (UTC-5)
+        const estOffset = -5 * 60; // EST is UTC-5
+        const estTime = new Date(now.getTime() + (estOffset + now.getTimezoneOffset()) * 60000);
+        const estHour = estTime.getHours();
+        
+        const today = now.toISOString().split('T')[0];
+        const lastReportDate = this.analyticsData.lastReportDate || '2024-01-01';
+        
+        // Check if it's 6 PM EST (18:00) and we haven't sent a report today
+        if (estHour === 18 && today !== lastReportDate) {
+            await this.sendDailyReport();
             this.analyticsData.lastReportDate = today;
             await this.saveAnalyticsData();
         }
     }
 
     /**
-     * Send bi-weekly report to officer channel
+     * Get today's stats
      */
-    private async sendBiWeeklyReport(): Promise<void> {
+    private getTodayData(): any {
+        const today = new Date().toISOString().split('T')[0];
+        const todayStats = this.analyticsData.dailyStats[today];
+        
+        if (!todayStats) {
+            return {
+                totalMessages: 0,
+                totalCommands: 0,
+                totalJoins: 0,
+                totalLeaves: 0,
+                totalKicks: 0,
+                activeUsers: 0
+            };
+        }
+        
+        return {
+            totalMessages: todayStats.messagesReceived,
+            totalCommands: todayStats.commandsUsed || 0,
+            totalJoins: todayStats.membersJoined,
+            totalLeaves: todayStats.membersLeft,
+            totalKicks: todayStats.membersKicked,
+            activeUsers: todayStats.activeUsers.size
+        };
+    }
+
+    /**
+     * Send daily report to officer channel with Discord embed (today's stats only)
+     */
+    private async sendDailyReport(): Promise<void> {
+        if (!this.api) return;
+
+        const todayData = this.getTodayData();
+        const today = new Date().toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+
+        try {
+            // Send Discord embed
+            if (this.api.discord && this.api.discord.sendEmbed && this.api.discord.channels.officer) {
+                const embed = {
+                    title: `📊 Daily Guild Report - ${today}`,
+                    color: 0x3498db,
+                    fields: [
+                        {
+                            name: '📅 Today\'s Activity',
+                            value: `💬 Messages: ${todayData.totalMessages}\n` +
+                                   `⚡ Commands: ${todayData.totalCommands}\n` +
+                                   `➕ Joins: ${todayData.totalJoins}\n` +
+                                   `➖ Leaves: ${todayData.totalLeaves}\n` +
+                                   `🔨 Kicks: ${todayData.totalKicks}\n` +
+                                   `👥 Active Users: ${todayData.activeUsers}`,
+                            inline: false
+                        }
+                    ],
+                    footer: {
+                        text: 'Automated daily report at 6 PM EST • Use !statsreport or !weeklyreport for more'
+                    },
+                    timestamp: new Date().toISOString()
+                };
+
+                await this.api.discord.sendEmbed(this.api.discord.channels.officer, embed);
+                this.api.log.info('📊 Daily report sent to officer channel');
+            }
+        } catch (error) {
+            this.api.log.error('Failed to send daily report:', error);
+        }
+    }
+
+    /**
+     * Send weekly report to officer channel with Discord embed
+     */
+    private async sendWeeklyReport(): Promise<void> {
         if (!this.api) return;
 
         const weekData = this.getWeeklyData();
-        const report = `📊 Bi-Weekly Guild Report:\n${this.formatWeeklyReport(weekData)}\nTotal all-time: ${this.analyticsData.totalStats.totalMessages} messages, ${this.analyticsData.totalStats.totalJoins} joins`;
+        const monthData = this.getMonthlyData();
+        
+        // Get top chatters
+        const topChatters = this.getTopChatters(10);
+        const topChattersText = topChatters.length > 0
+            ? topChatters.map((entry, i) => `${i + 1}. ${entry.username}: ${entry.count} messages`).join('\n')
+            : 'No data';
 
         try {
-            // Send to Discord officer channel if available
-            if (this.api.discord && this.api.discord.send) {
-                await this.api.discord.send('oc', report, 0x3498db, false);
+            // Send Discord embed
+            if (this.api.discord && this.api.discord.sendEmbed && this.api.discord.channels.officer) {
+                const embed = {
+                    title: '📊 Daily Guild Analytics Report',
+                    color: 0x3498db,
+                    fields: [
+                        {
+                            name: '📅 Last 7 Days',
+                            value: `💬 Messages: ${weekData.totalMessages}\n` +
+                                   `⚡ Commands: ${weekData.totalCommands}\n` +
+                                   `➕ Joins: ${weekData.totalJoins}\n` +
+                                   `➖ Leaves: ${weekData.totalLeaves}\n` +
+                                   `🔨 Kicks: ${weekData.totalKicks}\n` +
+                                   `👥 Active Users: ${weekData.activeUsers}`,
+                            inline: true
+                        },
+                        {
+                            name: '📅 Last 30 Days',
+                            value: `💬 Messages: ${monthData.totalMessages}\n` +
+                                   `⚡ Commands: ${monthData.totalCommands}\n` +
+                                   `➕ Joins: ${monthData.totalJoins}\n` +
+                                   `➖ Leaves: ${monthData.totalLeaves}\n` +
+                                   `🔨 Kicks: ${monthData.totalKicks}\n` +
+                                   `👥 Active Users: ${monthData.activeUsers}`,
+                            inline: true
+                        },
+                        {
+                            name: '🏆 Top Chatters (7 Days)',
+                            value: topChattersText,
+                            inline: false
+                        },
+                        {
+                            name: '📈 All-Time Stats',
+                            value: `💬 Total Messages: ${this.analyticsData.totalStats.totalMessages}\n` +
+                                   `⚡ Total Commands: ${this.analyticsData.totalStats.totalCommands}\n` +
+                                   `➕ Total Joins: ${this.analyticsData.totalStats.totalJoins}\n` +
+                                   `⬆️ Promotions: ${this.analyticsData.totalStats.totalPromotions}\n` +
+                                   `🎯 Quests: ${this.analyticsData.totalStats.totalQuests}`,
+                            inline: false
+                        }
+                    ],
+                    footer: {
+                        text: 'Weekly analytics report • Use !statsreport for today\'s stats'
+                    },
+                    timestamp: new Date().toISOString()
+                };
+
+                await this.api.discord.sendEmbed(this.api.discord.channels.officer, embed);
+                this.api.log.info('📊 Weekly report sent to officer channel');
             }
-            
-            this.api.log.info('📊 Bi-weekly report sent to officer channel');
         } catch (error) {
-            this.api.log.error('Failed to send bi-weekly report:', error);
+            this.api.log.error('Failed to send weekly report:', error);
         }
+    }
+
+    /**
+     * Get top chatters from the last 7 days
+     */
+    private getTopChatters(limit: number = 10): Array<{ username: string; count: number }> {
+        const today = new Date();
+        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const chatCounts: Record<string, number> = {};
+        
+        for (let d = new Date(weekAgo); d <= today; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            const dayStats = this.analyticsData.dailyStats[dateStr];
+            
+            if (dayStats && dayStats.topChatters) {
+                for (const [username, count] of Object.entries(dayStats.topChatters)) {
+                    chatCounts[username] = (chatCounts[username] || 0) + count;
+                }
+            }
+        }
+
+        return Object.entries(chatCounts)
+            .map(([username, count]) => ({ username, count }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, limit);
     }
 
     /**
@@ -1019,6 +1860,42 @@ class StaffManagementExtension {
         } catch (error) {
             if (this.api) {
                 this.api.log.error('Failed to save analytics data:', error);
+            }
+        }
+    }
+
+    /**
+     * Load ban list from file
+     */
+    private async loadBanList(): Promise<void> {
+        try {
+            const data = await fs.readFile(this.banListPath, 'utf8');
+            this.banList = JSON.parse(data);
+            
+            if (this.api) {
+                const totalBans = this.banList.bans.length;
+                this.api.log.info(`🔨 Loaded ${totalBans} ban(s) from ${this.banListPath}`);
+            }
+        } catch (error) {
+            if (this.api) {
+                this.api.log.warn('🔨 No existing ban list found, starting fresh');
+            }
+        }
+    }
+
+    /**
+     * Save ban list to file
+     */
+    private async saveBanList(): Promise<void> {
+        try {
+            await fs.writeFile(this.banListPath, JSON.stringify(this.banList, null, 2));
+            
+            if (this.api) {
+                this.api.log.debug(`🔨 Ban list saved to ${this.banListPath}`);
+            }
+        } catch (error) {
+            if (this.api) {
+                this.api.log.error('Failed to save ban list:', error);
             }
         }
     }

@@ -41,8 +41,7 @@ config();
 const env = envSchema.safeParse(process.env);
 
 if (!env.success) {
-    const { fieldErrors, formErrors } = env.error.flatten();
-    winston.error('Invalid configuration:', { formErrors, fieldErrors });
+    winston.error(`Invalid configuration: ${env.error.toString()}`);
     process.exit(1);
 }
 

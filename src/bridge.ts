@@ -1,11 +1,12 @@
 import { ActivityType, IntentsBitField } from 'discord.js';
 import { consola } from 'consola';
+import { EventEmitter } from 'events';
 import env from './util/env';
 import Discord from './discord/discord';
 import Mineflayer from './mineflayer/mineflayer';
 import MineflayerExtensionManager from './plugin-system/mineflayer-extension-manager';
 
-export default class Bridge {
+export default class Bridge extends EventEmitter {
     public readonly discord = new Discord({
         allowedMentions: { parse: ['users', 'roles'], repliedUser: true },
         intents: [
@@ -21,6 +22,7 @@ export default class Bridge {
     public totalCount = 125;
 
     constructor() {
+        super(); // Call EventEmitter constructor
         try {
             this.start();
         } catch (error) {
@@ -33,7 +35,7 @@ export default class Bridge {
 
         if (this.discord.isReady()) {
             this.discord.user.setActivity(
-                `${this.onlineCount - 1} online player${plural ? 's' : ''}`,
+                `${this.onlineCount - 1} online player${plural ? 's' : ''}`, // -1 for bot itself
                 {
                     type: ActivityType.Watching,
                 }

@@ -94,10 +94,36 @@ const envSchema = z
         PLUGINS_DIRECTORY: OPTIONAL_STRING_SCHEMA,
         PLUGINS_ENABLE_HOT_RELOAD: OPTIONAL_BOOLEAN_SCHEMA,
         PLUGINS_LOG_LEVEL: OPTIONAL_STRING_SCHEMA,
+
+        // === BRIDGE API CONFIGURATION ===
+        ENABLE_API: OPTIONAL_BOOLEAN_SCHEMA,
+        API_PORT: z.coerce.number().int().positive().default(3000),
+        ENABLE_AUTH: OPTIONAL_BOOLEAN_SCHEMA,
+        JWT_SECRET: OPTIONAL_STRING_SCHEMA,
+        ALLOWED_ORIGINS: OPTIONAL_STRING_SCHEMA,
+        RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(900000),
+        RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive().default(100),
+        
+        // === API AUTHENTICATION ===
+        ADMIN_USERNAME: OPTIONAL_STRING_SCHEMA,
+        ADMIN_PASSWORD: OPTIONAL_STRING_SCHEMA,
+        API_KEY: OPTIONAL_STRING_SCHEMA,
+
+        // === ADDITIONAL CONFIGURATION ===
+        NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+        LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
     })
     .refine((data) => !data.REMINDER_ENABLED || data.REMINDER_MESSAGE.trim() !== '', {
         message: 'Reminders are enabled but a message has not been set',
         path: ['REMINDER_MESSAGE'],
+    })
+    .refine((data) => !data.ENABLE_API || !data.ENABLE_AUTH || (data.JWT_SECRET && data.JWT_SECRET.trim() !== ''), {
+        message: 'API authentication is enabled but JWT_SECRET is not set',
+        path: ['JWT_SECRET'],
+    })
+    .refine((data) => !data.ENABLE_API || !data.ENABLE_AUTH || (data.ADMIN_PASSWORD && data.ADMIN_PASSWORD.trim() !== '') || (data.API_KEY && data.API_KEY.trim() !== ''), {
+        message: 'API authentication is enabled but neither ADMIN_PASSWORD nor API_KEY is set',
+        path: ['ADMIN_PASSWORD', 'API_KEY'],
     });
 
 config();

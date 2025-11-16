@@ -125,3 +125,6 @@ dist
 
 #MacOSX SHIT
 .DS_Store
+
+# Migrations
+docs/WEB_MIGRATION_PLAN.md

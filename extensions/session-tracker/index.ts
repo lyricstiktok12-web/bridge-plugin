@@ -472,6 +472,8 @@ class SessionTrackerExtension {
 
         for (let i = 0; i < userSessions.length; i++) {
             const session = userSessions[i];
+            if (!session) continue; // Skip if undefined
+            
             const duration = session.duration;
             const hours = Math.floor(duration / (1000 * 60 * 60));
             const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
@@ -932,7 +934,9 @@ class SessionTrackerExtension {
             // Remove oldest sessions for this user/game combo
             const toRemove = userSessions.length - this.config.maxHistoryPerUser;
             for (let i = 0; i < toRemove; i++) {
-                const index = this.sessionHistory.indexOf(userSessions[i]);
+                const sessionToRemove = userSessions[i];
+                if (!sessionToRemove) continue; // Skip if undefined
+                const index = this.sessionHistory.indexOf(sessionToRemove);
                 if (index > -1) {
                     this.sessionHistory.splice(index, 1);
                 }

@@ -1,13 +1,14 @@
 {
-  "name": "session-tracker",
+  "name": "session-tracker-extension",
   "version": "1.0.0",
-  "description": "Track individual game sessions for Bedwars, SkyWars, and CvC",
+  "description": "Track individual game sessions for Bedwars, SkyWars, and Cops and Crims",
   "main": "index.ts",
-  "scripts": {
-    "build": "tsc"
+  "extension": {
+    "id": "session-tracker",
+    "name": "Session Tracker",
+    "enabled": true,
+    "description": "Track individual game sessions for Bedwars, SkyWars, and Cops and Crims"
   },
-  "dependencies": {},
-  "devDependencies": {
-    "typescript": "^5.3.3"
-  }
+  "author": "MiscGuild Bridge Bot Team",
+  "license": "MIT"
 }

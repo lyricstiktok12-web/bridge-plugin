@@ -762,7 +762,7 @@ class SessionTrackerExtension {
                 return { status: response.status, statusText: response.statusText };
             }
 
-            const data = await response.json();
+            const data = await response.json() as any;
             return { id: data.id, name: data.name };
         } catch (error) {
             return { status: 500, statusText: 'Network error' };
@@ -782,7 +782,7 @@ class SessionTrackerExtension {
                 return { status: response.status, statusText: response.statusText };
             }
 
-            const data = await response.json();
+            const data = await response.json() as any;
             
             if (!data.success || !data.player) {
                 return { status: 404, statusText: 'Player not found' };

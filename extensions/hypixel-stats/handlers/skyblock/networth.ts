@@ -1,5 +1,7 @@
 /**
- * SkyBlock Networth Handler
+ * SkyBlock export const skyblockNetworthHandler: SkyBlockHandler = {
+    gameMode: 'SkyBlock Networth',
+    command: 'sb networth',worth Handler
  */
 
 import { Achievements, SkyBlock, StatsHandler } from '../../types';
@@ -16,7 +18,7 @@ try {
 
 export const skyblockNetworthHandler: StatsHandler = {
     gameMode: 'SkyBlock Networth',
-    command: 'sbnetworth',
+    command: 'sb networth',
     description: 'Check SkyBlock net worth overview',
     buildStatsMessage: async (playerName: string, achievements?: Achievements, stats?: SkyBlock, api?: any): Promise<string> => {
         if (!ProfileNetworthCalculator) {

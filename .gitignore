@@ -125,3 +125,9 @@ dist
 
 #MacOSX SHIT
 .DS_Store
+
+#Data
+data/
+
+#Github
+.github/

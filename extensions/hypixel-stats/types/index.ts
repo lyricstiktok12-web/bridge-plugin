@@ -19,6 +19,7 @@ export interface ExtensionAPI {
     config: any;
     chat: {
         sendGuildChat: (message: string) => void;
+        sendOfficerChat: (message: string) => void;
         sendPrivateMessage: (username: string, message: string) => void;
         sendPartyMessage: (message: string) => void;
     };
@@ -116,6 +117,9 @@ export interface Bedwars {
 
 // SkyWars stats interface
 export interface SkyWars {
+    level?: number;
+    experience?: number;
+    skywars_experience?: number;
     wins?: number;
     losses?: number;
     kills?: number;
@@ -234,6 +238,22 @@ export interface Walls3 {
     final_kills?: number;
     final_deaths?: number;
     chosen_class?: string;
+}
+
+// Pit stats interface
+export interface Pit {
+    profile?: {
+        kills?: number;
+        deaths?: number;
+        assists?: number;
+        prestige?: number;
+        level?: number;
+        cash?: number;
+        bounties?: number;
+        [key: string]: any;
+    };
+    pit_stats_ptl?: any;
+    [key: string]: any;
 }
 
 // Arcade stats interface
@@ -507,6 +527,7 @@ export interface HypixelPlayerResponse {
         Walls3?: Walls3;
         Arcade?: Arcade;
         MCGO?: MCGO;
+        Pit?: Pit;
         SkyBlock?: SkyBlock;
         [key: string]: any;
     };
@@ -516,6 +537,7 @@ export interface HypixelPlayerResponse {
 export interface StatsHandler {
     gameMode: string;
     command: string;
+    aliases?: string[]; // Optional array of alternative commands
     description: string;
     buildStatsMessage: (playerName: string, achievements?: Achievements, stats?: any, api?: any) => string | Promise<string>;
 }

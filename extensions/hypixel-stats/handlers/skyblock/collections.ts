@@ -7,7 +7,7 @@ import { getRandomHexColor } from '../../utils';
 
 export const skyblockCollectionsHandler: StatsHandler = {
     gameMode: 'SkyBlock Collections',
-    command: 'sbcollections',
+    command: 'sb collections',
     description: 'Check SkyBlock collections',
     buildStatsMessage: (playerName: string, achievements?: Achievements, stats?: SkyBlock): string => {
         if (!stats) {

@@ -6,11 +6,11 @@ import { Achievements, SkyBlock, StatsHandler } from '../../types';
 import { getRandomHexColor } from '../../utils';
 
 export const skyblockOverviewHandler: StatsHandler = {
-    gameMode: 'SkyBlock Overview',
+    gameMode: 'SkyBlock',
     command: 'sb',
     description: 'Check SkyBlock overview',
     buildStatsMessage: (playerName: string, achievements?: Achievements, stats?: SkyBlock): string => {
-        if (!stats) {
+        if (!stats || Object.keys(stats).length === 0) {
             return `No SkyBlock stats found for ${playerName}. Are they nicked? | ${getRandomHexColor()}`;
         }
 

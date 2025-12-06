@@ -7,7 +7,7 @@ import { getRandomHexColor } from '../../utils';
 
 export const skyblockDungeonsHandler: StatsHandler = {
     gameMode: 'SkyBlock Dungeons',
-    command: 'sbdungeons',
+    command: 'sb dungeons',
     description: 'Check SkyBlock dungeon stats',
     buildStatsMessage: (playerName: string, achievements?: Achievements, stats?: SkyBlock): string => {
         if (!stats || !stats.dungeons) {

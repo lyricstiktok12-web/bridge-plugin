@@ -80,14 +80,14 @@ export default class GuildInviteTracker {
         this.botContext = context;
         this.api = api;
         
-        api.log.info('🚀 Initializing Guild Activity Tracker v3.4 (Complete Monitoring)...');
+        api.log.info('Initializing Guild Activity Tracker v3.4 (Complete Monitoring)...');
         
         if (!this.config.enabled) {
             api.log.warn('Guild Activity Tracker is disabled in config');
             return;
         }
         
-        api.log.success('✅ Guild Activity Tracker v3.4 initialized successfully');
+        api.log.success('Guild Activity Tracker v3.4 initialized successfully');
     }
 
     /**
@@ -147,11 +147,11 @@ export default class GuildInviteTracker {
         
         // Check if we've already processed this user recently (prevent duplicates)
         if (this.processedUsers.has(username)) {
-            api.log.debug(`🔄 Skipping duplicate guild join for: ${username}`);
+            api.log.debug(`Skipping duplicate guild join for: ${username}`);
             return;
         }
         
-        api.log.info(`🎯 Guild join detected: ${username}`);
+        api.log.info(`Guild join detected: ${username}`);
         
         // Add to processed users and set a timeout to remove after 30 seconds
         this.processedUsers.add(username);
@@ -162,10 +162,13 @@ export default class GuildInviteTracker {
         // Store the username we're processing
         this.processingJoin = username;
 
+        // Check guild member count
+        await this.checkGuildCapacity(api);
+
         // Execute guild log command for specific member
         setTimeout(() => {
             if (this.botContext?.bot) {
-                api.log.info(`📋 Executing guild log for ${username}`);
+                api.log.info(`Executing guild log for ${username}`);
                 this.botContext.bot.chat(`/g log ${username}`);
             }
         }, this.config.logDelay);
@@ -184,11 +187,11 @@ export default class GuildInviteTracker {
         
         // Check if we've already processed this user recently (prevent duplicates)
         if (this.processedUsers.has(username)) {
-            api.log.debug(`🔄 Skipping duplicate guild leave for: ${username}`);
+            api.log.debug(`Skipping duplicate guild leave for: ${username}`);
             return;
         }
         
-        api.log.info(`👋 Guild leave detected: ${username}`);
+        api.log.info(`Guild leave detected: ${username}`);
         
         // Add to processed users and set a timeout to remove after 30 seconds
         this.processedUsers.add(username);
@@ -215,11 +218,11 @@ export default class GuildInviteTracker {
         // Check if we've already processed this kick recently (prevent duplicates)
         const kickKey = `${kickedUser}-kicked-by-${kickerUser}`;
         if (this.processedUsers.has(kickKey)) {
-            api.log.debug(`🔄 Skipping duplicate guild kick for: ${kickedUser}`);
+            api.log.debug(`Skipping duplicate guild kick for: ${kickedUser}`);
             return;
         }
         
-        api.log.info(`🦵 Guild kick detected: ${kickedUser} kicked by ${kickerUser}`);
+        api.log.info(`Guild kick detected: ${kickedUser} kicked by ${kickerUser}`);
         
         // Add to processed users and set a timeout to remove after 30 seconds
         this.processedUsers.add(kickKey);
@@ -242,11 +245,11 @@ export default class GuildInviteTracker {
 
         // Check if we've already processed a log for this user
         if (this.processedLogs.has(username)) {
-            api.log.debug(`🔄 Skipping duplicate guild log processing for: ${username}`);
+            api.log.debug(`Skipping duplicate guild log processing for: ${username}`);
             return;
         }
 
-        api.log.info(`📊 Processing guild log for ${username}`);
+        api.log.info(`Processing guild log for ${username}`);
 
         // Mark this user as having their log processed
         this.processedLogs.add(username);
@@ -294,7 +297,7 @@ export default class GuildInviteTracker {
             const firstTwoEntries = logEntries.slice(0, 2);
             
             if (this.config.debugMode) {
-                api.log.debug(`📋 Checking first 2 log entries for ${targetUsername}:`);
+                api.log.debug(`Checking first 2 log entries for ${targetUsername}:`);
                 firstTwoEntries.forEach((entry, index) => {
                     api.log.debug(`  Entry ${index + 1}: ${entry.trim()}`);
                 });
@@ -320,7 +323,7 @@ export default class GuildInviteTracker {
                         const match = entry.match(pattern);
                         if (match) {
                             const inviter = match[1];
-                            api.log.success(`✅ Found inviter in entry ${i + 1}: ${inviter} invited ${targetUsername}`);
+                            api.log.success(`Found inviter in entry ${i + 1}: ${inviter} invited ${targetUsername}`);
                             return { inviter };
                         }
                     }
@@ -347,9 +350,9 @@ export default class GuildInviteTracker {
             const bridge = this.botContext?.bridge;
             if (bridge?.discord?.send) {
                 await bridge.discord.send(this.config.discordChannel, message);
-                api.log.success(`✅ Sent invite notification: ${username} invited by ${inviterName}`);
+                api.log.success(`Sent invite notification: ${username} invited by ${inviterName}`);
             } else {
-                api.log.error('❌ Discord bridge not available');
+                api.log.error('Discord bridge not available');
             }
         } catch (error) {
             api.log.error('Error sending Discord notification:', error);
@@ -366,9 +369,9 @@ export default class GuildInviteTracker {
             const bridge = this.botContext?.bridge;
             if (bridge?.discord?.send) {
                 await bridge.discord.send(this.config.discordChannel, message);
-                api.log.success(`✅ Sent no-invite notification: ${username} joined without invite`);
+                api.log.success(`Sent no-invite notification: ${username} joined without invite`);
             } else {
-                api.log.error('❌ Discord bridge not available');
+                api.log.error('Discord bridge not available');
             }
         } catch (error) {
             api.log.error('Error sending Discord notification:', error);
@@ -385,9 +388,9 @@ export default class GuildInviteTracker {
             const bridge = this.botContext?.bridge;
             if (bridge?.discord?.send) {
                 await bridge.discord.send(this.config.discordChannel, message);
-                api.log.success(`✅ Sent leave notification: ${username} left the guild`);
+                api.log.success(`Sent leave notification: ${username} left the guild`);
             } else {
-                api.log.error('❌ Discord bridge not available');
+                api.log.error('Discord bridge not available');
             }
         } catch (error) {
             api.log.error('Error sending Discord notification:', error);
@@ -404,12 +407,75 @@ export default class GuildInviteTracker {
             const bridge = this.botContext?.bridge;
             if (bridge?.discord?.send) {
                 await bridge.discord.send(this.config.discordChannel, message);
-                api.log.success(`✅ Sent kick notification: ${kickedUser} kicked by ${kickerUser}`);
+                api.log.success(`Sent kick notification: ${kickedUser} kicked by ${kickerUser}`);
             } else {
-                api.log.error('❌ Discord bridge not available');
+                api.log.error('Discord bridge not available');
             }
         } catch (error) {
             api.log.error('Error sending Discord notification:', error);
+        }
+    }
+
+    /**
+     * Check guild capacity and send notification if full
+     */
+    private async checkGuildCapacity(api: ExtensionAPI): Promise<void> {
+        try {
+            const hypixelApiKey = process.env.HYPIXEL_API_KEY;
+            if (!hypixelApiKey) {
+                api.log.warn('Hypixel API key not found, cannot check guild capacity');
+                return;
+            }
+
+            // Get bot's UUID first
+            const botUsername = this.botContext?.bot?.username;
+            if (!botUsername) return;
+
+            const mojangResponse = await fetch(`https://api.mojang.com/users/profiles/minecraft/${botUsername}`);
+            if (!mojangResponse.ok) return;
+            
+            const mojangData: any = await mojangResponse.json();
+            const botUuid = mojangData.id;
+
+            // Fetch guild data using bot's UUID
+            const guildResponse = await fetch(`https://api.hypixel.net/guild?player=${botUuid}&key=${hypixelApiKey}`);
+            if (!guildResponse.ok) {
+                api.log.error(`Failed to fetch guild data: ${guildResponse.status}`);
+                return;
+            }
+
+            const guildData: any = await guildResponse.json();
+            
+            if (!guildData.success || !guildData.guild) {
+                api.log.error('Invalid guild data received');
+                return;
+            }
+
+            const memberCount = guildData.guild.members?.length || 0;
+            const maxMembers = 125; // Hypixel guild max capacity
+            
+            api.log.info(`Guild capacity: ${memberCount}/${maxMembers}`);
+
+            // If guild is full or very close, send notification
+            if (memberCount >= maxMembers) {
+                const message = `**GUILD IS FULL!** Current members: ${memberCount}/${maxMembers}. Cannot accept new members.`;
+                const bridge = this.botContext?.bridge;
+                if (bridge?.discord?.send) {
+                    await bridge.discord.send(this.config.discordChannel, message);
+                    api.log.warn(`Guild is full: ${memberCount}/${maxMembers}`);
+                }
+            } else if (memberCount >= maxMembers - 5) {
+                // Warn when approaching capacity
+                const message = `Guild approaching capacity: ${memberCount}/${maxMembers} members`;
+                const bridge = this.botContext?.bridge;
+                if (bridge?.discord?.send) {
+                    await bridge.discord.send(this.config.discordChannel, message);
+                    api.log.warn(`Guild approaching capacity: ${memberCount}/${maxMembers}`);
+                }
+            }
+
+        } catch (error) {
+            api.log.error('Error checking guild capacity:', error);
         }
     }
 
@@ -420,6 +486,6 @@ export default class GuildInviteTracker {
         this.processingJoin = null;
         this.processedUsers.clear();
         this.processedLogs.clear();
-        this.api?.log.info('🛑 Guild Activity Tracker v3.4 destroyed');
+        this.api?.log.info('Guild Activity Tracker v3.4 destroyed');
     }
 }

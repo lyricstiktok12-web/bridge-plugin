@@ -1,0 +1,7 @@
+{
+  "enabled": true,
+  "hypixelApiKey": "",
+  "supportedGames": ["bw", "sw", "cvc"],
+  "cacheExpiryTime": 900000,
+  "maxHistoryPerUser": 50
+}

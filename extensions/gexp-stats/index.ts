@@ -38,6 +38,7 @@ interface ExtensionAPI {
     config: any;
     chat: {
         sendGuildChat: (message: string) => void;
+        sendOfficerChat: (message: string) => void;
         sendPrivateMessage: (username: string, message: string) => void;
         sendPartyMessage: (message: string) => void;
     };
@@ -180,7 +181,7 @@ class GEXPStatsExtension {
         this.config = { ...this.defaultConfig, ...api.config };
         this.api = api;
         
-        api.log.info('📊 Initializing GEXP Stats Extension...');
+        api.log.info('Initializing GEXP Stats Extension...');
         
         if (!this.config.enabled) {
             api.log.warn('GEXP Stats Extension is disabled in config');
@@ -188,14 +189,27 @@ class GEXPStatsExtension {
         }
 
         if (!this.config.hypixelApiKey) {
-            api.log.error('❌ Hypixel API key not found! Please set HYPIXEL_API_KEY environment variable');
+            api.log.error('Hypixel API key not found! Please set HYPIXEL_API_KEY environment variable');
             return;
         }
 
         // Start cooldown cleanup interval
         this.startCooldownCleanup();
 
-        api.log.success('✅ GEXP Stats Extension initialized successfully');
+        api.log.success('GEXP Stats Extension initialized successfully');
+    }
+
+    /**
+     * Send message to correct channel
+     */
+    private sendToChannel(context: ChatMessageContext, api: ExtensionAPI, message: string): void {
+        if (context.channel === 'Officer') {
+            api.chat.sendOfficerChat(message);
+        } else if (context.channel === 'Guild') {
+            api.chat.sendGuildChat(message);
+        } else {
+            api.chat.sendPrivateMessage(context.username, message);
+        }
     }
 
     /**
@@ -205,7 +219,7 @@ class GEXPStatsExtension {
         return [{
             id: 'gexp-stats',
             extensionId: 'gexp-stats',
-            pattern: /^!gexp(?:\s+(\S+))?(?:\s+.*)?$/i,
+            pattern: /^!gexp(?:\s+([A-Za-z0-9_]{1,16}))?/i,
             priority: 1,
             description: 'Check GEXP statistics for a player',
             handler: this.handleGEXPCommand.bind(this)
@@ -238,7 +252,7 @@ class GEXPStatsExtension {
         this.processingRequests.add(requestKey);
         this.setCooldown(requester, Date.now());
 
-        api.log.info(`📊 Looking up GEXP stats for ${target} (requested by ${requester})`);
+        api.log.info(`Looking up GEXP stats for ${target} (requested by ${requester})`);
 
         try {
             // Fetch Mojang profile
@@ -271,14 +285,14 @@ class GEXPStatsExtension {
 
             // Build and send GEXP message
             const gexpMessage = this.buildGEXPMessage(target, guildMember.expHistory);
-            api.chat.sendGuildChat(gexpMessage);
+            this.sendToChannel(context, api, gexpMessage);
 
-            api.log.success(`✅ Sent GEXP stats for ${target}`);
+            api.log.success(`Sent GEXP stats for ${target}`);
 
         } catch (error) {
             api.log.error(`Error fetching GEXP stats:`, error);
             const errorMessage = `${requester}, An error occurred while fetching GEXP stats for ${target}. Please try again later. | ${getRandomHexColor()}`;
-            api.chat.sendGuildChat(errorMessage);
+            this.sendToChannel(context, api, errorMessage);
         } finally {
             // Always cleanup the processing flag
             this.processingRequests.delete(requestKey);
@@ -456,7 +470,7 @@ class GEXPStatsExtension {
         }
         
         if (this.config.debugMode && this.api) {
-            this.api.log.debug(`🧹 Cleaned up old GEXP cooldowns, ${this.cooldowns.size} active cooldowns remaining`);
+            this.api.log.debug(`Cleaned up old GEXP cooldowns, ${this.cooldowns.size} active cooldowns remaining`);
         }
     }
 
@@ -473,7 +487,7 @@ class GEXPStatsExtension {
         // Clear all cooldowns and processing requests
         this.cooldowns.clear();
         this.processingRequests.clear();
-        this.api?.log.info('🛑 GEXP Stats Extension destroyed');
+        this.api?.log.info('GEXP Stats Extension destroyed');
     }
 }
 

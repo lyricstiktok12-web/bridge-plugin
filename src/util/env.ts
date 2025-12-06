@@ -28,6 +28,8 @@ const envSchema = z
         MINECRAFT_EMAIL: z.string().email(),
         MINECRAFT_PASSWORD: OPTIONAL_STRING_SCHEMA,
         HYPIXEL_API_KEY: z.string(),
+        FALLBACK_HYPIXEL_API_KEY: z.string(),
+        '2ND_FALLBACK_HYPIXEL_API_KEY': z.string(),
         HYPIXEL_GUILD_NAME: z.string(),
         MINECRAFT_CHAT_SEPARATOR: z.string().trim().min(1),
         USE_PROFANITY_FILTER: BOOLEAN_SCHEMA,
@@ -94,6 +96,9 @@ const envSchema = z
         PLUGINS_DIRECTORY: OPTIONAL_STRING_SCHEMA,
         PLUGINS_ENABLE_HOT_RELOAD: OPTIONAL_BOOLEAN_SCHEMA,
         PLUGINS_LOG_LEVEL: OPTIONAL_STRING_SCHEMA,
+
+        // === STAFF MANAGEMENT SETTINGS ===
+        BAN_ALLOWED_RANKS: OPTIONAL_STRING_SCHEMA,
     })
     .refine((data) => !data.REMINDER_ENABLED || data.REMINDER_MESSAGE.trim() !== '', {
         message: 'Reminders are enabled but a message has not been set',

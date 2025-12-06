@@ -7,7 +7,7 @@ import { getRandomHexColor } from '../../utils';
 
 export const skyblockSlayersHandler: StatsHandler = {
     gameMode: 'SkyBlock Slayers',
-    command: 'sbslayers',
+    command: 'sb slayers',
     description: 'Check SkyBlock slayer stats',
     buildStatsMessage: (playerName: string, achievements?: Achievements, stats?: SkyBlock): string => {
         if (!stats || !stats.slayer_bosses) {

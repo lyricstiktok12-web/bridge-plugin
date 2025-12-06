@@ -7,15 +7,24 @@ import { getRandomHexColor } from '../../utils';
 
 export const skyblockSkillsHandler: StatsHandler = {
     gameMode: 'SkyBlock Skills',
-    command: 'sbskills',
+    command: 'sb skills',
     description: 'Check SkyBlock skills',
     buildStatsMessage: (playerName: string, achievements?: Achievements, stats?: SkyBlock): string => {
         if (!stats) {
-            return `No SkyBlock skills found for ${playerName}. Are they nicked? | ${getRandomHexColor()}`;
+            return `No SkyBlock profile found for ${playerName}. Are they nicked? | ${getRandomHexColor()}`;
+        }
+
+        // Check if experience is an object (Skills API enabled) or a number (Skills API disabled)
+        const levelingData = (stats as any).leveling;
+        const experienceData = levelingData?.experience;
+
+        // If experience is a number or undefined, Skills API is disabled
+        if (typeof experienceData === 'number' || !experienceData || typeof experienceData !== 'object') {
+            return `${playerName} has Skills API disabled. They need to enable it in SkyBlock Settings > API Settings > Skills API. | ${getRandomHexColor()}`;
         }
 
         // Skills - calculated from experience values
-        const skillData = (stats as any).leveling?.experience || {};
+        const skillData = experienceData;
         const farmingLevel = skillData.SKILL_FARMING ? calculateSkillLevel(skillData.SKILL_FARMING) : 0;
         const miningLevel = skillData.SKILL_MINING ? calculateSkillLevel(skillData.SKILL_MINING) : 0;
         const combatLevel = skillData.SKILL_COMBAT ? calculateSkillLevel(skillData.SKILL_COMBAT) : 0;

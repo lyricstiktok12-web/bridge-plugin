@@ -30,6 +30,7 @@ interface ExtensionAPI {
     config: any;
     chat: {
         sendGuildChat: (message: string) => void;
+        sendOfficerChat: (message: string) => void;
         sendPrivateMessage: (username: string, message: string) => void;
         sendPartyMessage: (message: string) => void;
         executeCommand: (command: string) => void;
@@ -123,6 +124,9 @@ export class MineflayerExtensionManager extends EventEmitter {
             chat: {
                 sendGuildChat: (message: string) => {
                     bridge.mineflayer.getBot().chat(`/gc ${message}`);
+                },
+                sendOfficerChat: (message: string) => {
+                    bridge.mineflayer.getBot().chat(`/oc ${message}`);
                 },
                 sendPrivateMessage: (username: string, message: string) => {
                     bridge.mineflayer.getBot().chat(`/msg ${username} ${message}`);

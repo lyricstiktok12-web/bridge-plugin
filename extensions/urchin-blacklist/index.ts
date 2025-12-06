@@ -47,7 +47,7 @@ class UrchinBlacklistExtension {
         this.botContext = context;
         this.api = api;
         
-        api.log.info('🔍 Initializing Urchin Blacklist Extension...');
+        api.log.info('Initializing Urchin Blacklist Extension...');
         
         if (!this.config.enabled) {
             api.log.warn('Urchin Blacklist Extension is disabled in config');
@@ -55,14 +55,14 @@ class UrchinBlacklistExtension {
         }
 
         if (!this.config.urchinApiKey) {
-            api.log.error('❌ Urchin API key not found! Please set URCHIN_API_KEY environment variable');
+            api.log.error('Urchin API key not found! Please set URCHIN_API_KEY environment variable');
             return;
         }
 
         // Start cooldown cleanup interval
         this.startCooldownCleanup();
         
-        api.log.success('✅ Urchin Blacklist Extension initialized successfully');
+        api.log.success('Urchin Blacklist Extension initialized successfully');
     }
 
     /**
@@ -112,7 +112,7 @@ class UrchinBlacklistExtension {
         this.processingRequests.add(requestKey);
         this.setCooldown(requester, Date.now());
 
-        api.log.info(`🔍 Looking up blacklist info for ${target} (requested by ${requester})`);
+        api.log.info(`Looking up blacklist info for ${target} (requested by ${requester})`);
 
         try {
             // Step 1: Convert username to UUID using Mojang API
@@ -188,7 +188,7 @@ class UrchinBlacklistExtension {
                     api.chat.sendGuildChat(`[${tagType}] ${target} - ${reason} | #${this.getRandomHexColor()}`);
                 }
 
-                api.log.success(`✅ Sent blacklist info for ${target} (${urchinData.tags.length} tags found)`);
+                api.log.success(`Sent blacklist info for ${target} (${urchinData.tags.length} tags found)`);
 
             } catch (error) {
                 api.log.error(`Error querying Urchin API for ${target}:`, error);
@@ -262,7 +262,7 @@ class UrchinBlacklistExtension {
         this.processingRequests.clear();
         
         if (this.api) {
-            this.api.log.info('🔍 Urchin Blacklist Extension cleaned up');
+            this.api.log.info('Urchin Blacklist Extension cleaned up');
         }
     }
 }

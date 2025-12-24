@@ -13,8 +13,8 @@ This extension provides guild experience (GEXP) statistics for Hypixel players w
 
 ## Command
 
-| Command | Description | Usage |
-|---------|-------------|-------|
+| Command            | Description           | Usage                                         |
+| ------------------ | --------------------- | --------------------------------------------- |
 | `!gexp [username]` | Check GEXP statistics | `!gexp Technoblade` or `!gexp` (for yourself) |
 
 ## Output Format
@@ -26,6 +26,7 @@ The extension provides formal, structured output:
 ```
 
 Where:
+
 - **IGN**: Player's in-game name
 - **Weekly**: Total GEXP accumulated over the past 7 days
 - **Daily**: GEXP earned today (most recent day in history)
@@ -35,9 +36,9 @@ Where:
 
 ```json
 {
-  "enabled": true,
-  "hypixelApiKey": "your-api-key",
-  "cleanupInterval": 300000
+    "enabled": true,
+    "hypixelApiKey": "your-api-key",
+    "cleanupInterval": 300000
 }
 ```
 
@@ -50,6 +51,7 @@ Where:
 ## Error Handling
 
 The extension handles various scenarios:
+
 - **Player not found**: Invalid username or player doesn't exist
 - **No guild**: Player is not in any guild
 - **No GEXP data**: Player hasn't been active in the past 7 days
@@ -72,16 +74,19 @@ The extension handles various scenarios:
 ## Example Outputs
 
 **Active Player:**
+
 ```
 [GEXP] IGN: Technoblade | Weekly: 125.4K | Daily: 18.2K | AVG: 17.9K | #abc123
 ```
 
 **Low Activity Player:**
+
 ```
 [GEXP] IGN: CasualPlayer | Weekly: 5.2K | Daily: 0.8K | AVG: 0.7K | #def456
 ```
 
 **No Data Available:**
+
 ```
 [GEXP] IGN: InactivePlayer | No GEXP data found. Player may not have been active in the past 7 days. | #789abc
 ```

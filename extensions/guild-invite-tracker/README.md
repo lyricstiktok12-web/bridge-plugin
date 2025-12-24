@@ -13,10 +13,10 @@ This extension automatically tracks guild member invites by monitoring guild log
 
 ```json
 {
-  "enabled": true,
-  "logCheckDelay": 2000,
-  "maxRetries": 3,
-  "discordChannel": "staff"
+    "enabled": true,
+    "logCheckDelay": 2000,
+    "maxRetries": 3,
+    "discordChannel": "staff"
 }
 ```
 
@@ -34,6 +34,7 @@ The extension automatically monitors guild member joins and provides detailed in
 ## Example Output
 
 When a member joins with an invite, the extension will send a Discord embed to the staff bridge:
+
 ```
 Player [MVP+] _7RC joined the guild!
 

@@ -13,20 +13,23 @@ try {
     // Find all dist directories excluding node_modules
     const findCommand = 'find . -type d -name "dist" -not -path "*/node_modules/*" 2>/dev/null';
     const output = execSync(findCommand, { encoding: 'utf8', cwd: process.cwd() });
-    
-    const distDirs = output.trim().split('\n').filter(dir => dir.length > 0);
-    
+
+    const distDirs = output
+        .trim()
+        .split('\n')
+        .filter((dir) => dir.length > 0);
+
     if (distDirs.length === 0) {
         console.log('✅ No dist directories found to clean');
         process.exit(0);
     }
-    
+
     console.log('📁 Found the following dist directories:');
-    distDirs.forEach(dir => console.log(`  ${dir}`));
-    
+    distDirs.forEach((dir) => console.log(`  ${dir}`));
+
     // Remove all dist directories
     let removedCount = 0;
-    distDirs.forEach(dir => {
+    distDirs.forEach((dir) => {
         const fullPath = path.resolve(dir);
         if (fs.existsSync(fullPath)) {
             console.log(`🗑️  Removing ${dir}`);
@@ -34,9 +37,8 @@ try {
             removedCount++;
         }
     });
-    
+
     console.log(`✅ Removed ${removedCount} dist directories successfully!`);
-    
 } catch (error) {
     console.error('❌ Error cleaning dist directories:', error.message);
     process.exit(1);

@@ -1,9 +1,9 @@
 /**
  * Centralized Cooldown Manager
- * 
+ *
  * Manages command cooldowns based on guild ranks configured via environment variables.
  * Provides a consistent cooldown system across all extensions.
- * 
+ *
  * @author MiscGuild Bridge Bot Team
  * @version 1.0.0
  */
@@ -45,7 +45,10 @@ export class CooldownManager {
         this.rankCooldowns.set(`[${env.RANK_5}]`, env.COOLDOWN_RANK_5);
         this.rankCooldowns.set(`[${env.RANK_LEADER}]`, env.COOLDOWN_LEADER);
 
-        console.log('Cooldown Manager initialized with ranks:', Array.from(this.rankCooldowns.entries()));
+        console.log(
+            'Cooldown Manager initialized with ranks:',
+            Array.from(this.rankCooldowns.entries())
+        );
     }
 
     /**
@@ -85,7 +88,7 @@ export class CooldownManager {
     public isOnCooldown(username: string, guildRank?: string, commandId?: string): number | null {
         const key = commandId ? `${username}-${commandId}` : username;
         const entry = this.cooldowns.get(key);
-        
+
         if (!entry) {
             return null; // No cooldown
         }
@@ -93,7 +96,7 @@ export class CooldownManager {
         const cooldownDuration = this.getCooldownForRank(guildRank);
         const cooldownMs = cooldownDuration * 1000;
         const elapsed = Date.now() - entry.timestamp;
-        
+
         if (elapsed >= cooldownMs) {
             // Cooldown expired, remove it
             this.cooldowns.delete(key);
@@ -111,7 +114,7 @@ export class CooldownManager {
         const key = commandId ? `${username}-${commandId}` : username;
         this.cooldowns.set(key, {
             timestamp: Date.now(),
-            username
+            username,
         });
     }
 
@@ -143,7 +146,7 @@ export class CooldownManager {
                 active.push({
                     username: entry.username,
                     key,
-                    expiresIn
+                    expiresIn,
                 });
             }
         });

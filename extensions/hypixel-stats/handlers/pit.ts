@@ -16,17 +16,17 @@ export const pitHandler: StatsHandler = {
 
         // Get profile data
         const profile = stats.profile || {};
-        
+
         const kills = profile.kills ?? 0;
         const deaths = profile.deaths ?? 0;
         const assists = profile.assists ?? 0;
         const prestige = profile.prestige ?? 0;
         const level = profile.level ?? 0;
         const gold = profile.cash ?? 0;
-        
+
         // Calculate KDR
         const kdr = calculateRatio(kills, deaths);
 
         return `[Pit] IGN: ${playerName} | Prestige: ${prestige} | Level: ${level} | KILLS: ${formatNumber(kills)} | KDR: ${kdr} | ASSISTS: ${formatNumber(assists)} | GOLD: ${formatNumber(gold)} | ${getRandomHexColor()}`;
-    }
+    },
 };

@@ -13,14 +13,20 @@ export default {
         );
 
         if (env.REMINDER_ENABLED) {
-            setInterval(() => {
-                bridge.mineflayer.chat('gc', env.REMINDER_MESSAGE);
-            }, 1000 * 60 * env.REMINDER_FREQUENCY);
+            setInterval(
+                () => {
+                    bridge.mineflayer.chat('gc', env.REMINDER_MESSAGE);
+                },
+                1000 * 60 * env.REMINDER_FREQUENCY
+            );
         }
 
-        setInterval(() => {
-            bridge.mineflayer.execute('/g online');
-        }, 1000 * 60 * 5);
+        setInterval(
+            () => {
+                bridge.mineflayer.execute('/g online');
+            },
+            1000 * 60 * 5
+        );
 
         setTimeout(() => {
             bridge.mineflayer.execute('/g online');

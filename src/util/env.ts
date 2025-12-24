@@ -8,7 +8,7 @@ const BOOLEAN_SCHEMA = z
     .transform((x) => x === 'true')
     .pipe(z.boolean());
 
-const OPTIONAL_BOOLEAN_SCHEMA = z
+const _OPTIONAL_BOOLEAN_SCHEMA = z
     .string()
     .toLowerCase()
     .transform((x) => x === 'true')
@@ -18,8 +18,6 @@ const OPTIONAL_BOOLEAN_SCHEMA = z
 const SNOWFLAKE_SCHEMA = z.coerce.string().regex(/^\d*$/gm);
 
 const OPTIONAL_STRING_SCHEMA = z.string().optional();
-
-const OPTIONAL_NUMBER_SCHEMA = z.coerce.number().optional();
 
 // * By default, dotenv populates missing values with empty strings - minimum length should not be used for optional fields
 const envSchema = z
@@ -39,7 +37,7 @@ const envSchema = z
         REMINDER_MESSAGE: z.string().max(256),
         REMINDER_FREQUENCY: z.coerce.number().int().positive().default(60),
         MINECRAFT_RECONNECT_DELAY: z.coerce.number().int().positive().default(10),
-        
+
         // === DISCORD CONFIGURATION ===
         DISCORD_TOKEN: z.string().min(1),
         DISCORD_IGNORE_PREFIX: z.string().trim().min(1),
@@ -63,7 +61,7 @@ const envSchema = z
         COOLDOWN_RANK_5: z.coerce.number().int().min(0).default(10),
         COOLDOWN_LEADER: z.coerce.number().int().min(0).default(0),
         COOLDOWN_URCHIN: z.coerce.number().int().min(0).default(5),
-        
+
         RANK_1: z.string().default(''),
         RANK_2: z.string().default(''),
         RANK_3: z.string().default(''),
@@ -84,4 +82,4 @@ if (!env.success) {
     process.exit(1);
 }
 
-export default env.data!
+export default env.data!;

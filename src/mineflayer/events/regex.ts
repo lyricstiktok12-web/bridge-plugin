@@ -1,6 +1,6 @@
 /**
  * Core Minecraft Chat Regex Patterns
- * 
+ *
  * This file contains the core regex patterns for parsing Hypixel chat messages.
  * Extensions can add additional patterns through the MineflayerExtensionManager.
  */
@@ -166,7 +166,7 @@ export function getAllRegexPatterns(bridge?: Bridge): Record<string, RegExp> {
     if (bridge?.extensionManager) {
         try {
             const extensionPatterns = bridge.extensionManager.getAllChatPatterns();
-            
+
             for (const pattern of extensionPatterns) {
                 // Convert extension patterns to the legacy format for backward compatibility
                 const eventName = `extension:${pattern.extensionId}:${pattern.id}`;
@@ -191,7 +191,7 @@ export function buildUnifiedRegexPatterns(bridge?: Bridge): Record<string, RegEx
     if (bridge && 'pluginLoader' in bridge && bridge.pluginLoader) {
         try {
             const pluginPatterns = (bridge.pluginLoader as any).getPluginRegexPatterns();
-            
+
             for (const [eventName, pattern] of pluginPatterns) {
                 unifiedPatterns[eventName] = pattern;
             }

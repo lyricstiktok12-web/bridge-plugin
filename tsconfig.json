@@ -17,18 +17,8 @@
         "skipLibCheck": true,
         "isolatedModules": true,
         "experimentalDecorators": true,
-        "emitDecoratorMetadata": true,
-
+        "emitDecoratorMetadata": true
     },
-    "include": [
-        "src/**/*",
-        "plugins/**/*",
-        "config/**/*"
-    ],
-    "exclude": [
-        "node_modules",
-        "dist",
-        "**/*.test.ts",
-        "**/*.spec.ts"
-    ]
+    "include": ["src/**/*", "plugins/**/*", "config/**/*"],
+    "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
 }

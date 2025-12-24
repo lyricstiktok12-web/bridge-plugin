@@ -2,9 +2,25 @@
  * Export all game mode handlers
  */
 
-export { bedwarsHandler, bedwarsSoloHandler, bedwarsDoublesHandler, bedwarsThreesHandler, bedwarsFoursHandler, bedwars4v4Handler } from './bedwars';
+export {
+    bedwarsHandler,
+    bedwarsSoloHandler,
+    bedwarsDoublesHandler,
+    bedwarsThreesHandler,
+    bedwarsFoursHandler,
+    bedwars4v4Handler,
+} from './bedwars';
 export { skywarsHandler } from './skywars';
-export { duelsHandler, uhcDuelsHandler, swDuelsHandler, classicDuelsHandler, bowDuelsHandler, opDuelsHandler, comboDuelsHandler, potionDuelsHandler } from './duels';
+export {
+    duelsHandler,
+    uhcDuelsHandler,
+    swDuelsHandler,
+    classicDuelsHandler,
+    bowDuelsHandler,
+    opDuelsHandler,
+    comboDuelsHandler,
+    potionDuelsHandler,
+} from './duels';
 export { uhcHandler } from './uhc';
 export { buildBattleHandler } from './buildbattle';
 export { murderMysteryHandler } from './murdermystery';
@@ -17,9 +33,25 @@ export { pitHandler } from './pit';
 // Export all SkyBlock handlers
 export { allSkyblockHandlers } from './skyblock/index';
 
-import { bedwarsHandler, bedwarsSoloHandler, bedwarsDoublesHandler, bedwarsThreesHandler, bedwarsFoursHandler, bedwars4v4Handler } from './bedwars';
+import {
+    bedwarsHandler,
+    bedwarsSoloHandler,
+    bedwarsDoublesHandler,
+    bedwarsThreesHandler,
+    bedwarsFoursHandler,
+    bedwars4v4Handler,
+} from './bedwars';
 import { skywarsHandler } from './skywars';
-import { duelsHandler, uhcDuelsHandler, swDuelsHandler, classicDuelsHandler, bowDuelsHandler, opDuelsHandler, comboDuelsHandler, potionDuelsHandler } from './duels';
+import {
+    duelsHandler,
+    uhcDuelsHandler,
+    swDuelsHandler,
+    classicDuelsHandler,
+    bowDuelsHandler,
+    opDuelsHandler,
+    comboDuelsHandler,
+    potionDuelsHandler,
+} from './duels';
 import { uhcHandler } from './uhc';
 import { buildBattleHandler } from './buildbattle';
 import { murderMysteryHandler } from './murdermystery';
@@ -54,5 +86,5 @@ export const allHandlers = [
     arcadeHandler,
     copsAndCrimsHandler,
     pitHandler,
-    ...allSkyblockHandlers
+    ...allSkyblockHandlers,
 ];

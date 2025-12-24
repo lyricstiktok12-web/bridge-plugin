@@ -1,7 +1,7 @@
 {
-  "name": "urchin-blacklist",
-  "version": "1.0.0",
-  "description": "Urchin blacklist checker extension for Bridge Bot",
-  "main": "index.ts",
-  "dependencies": {}
+    "name": "urchin-blacklist",
+    "version": "1.0.0",
+    "description": "Urchin blacklist checker extension for Bridge Bot",
+    "main": "index.ts",
+    "dependencies": {}
 }

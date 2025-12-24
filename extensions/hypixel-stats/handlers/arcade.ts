@@ -9,13 +9,18 @@ export const arcadeHandler: StatsHandler = {
     gameMode: 'Arcade',
     command: 'arcade',
     description: 'Check Arcade Games stats',
-    buildStatsMessage: (playerName: string, achievements?: Achievements, stats?: Arcade): string => {
+    buildStatsMessage: (
+        playerName: string,
+        achievements?: Achievements,
+        stats?: Arcade
+    ): string => {
         if (!stats) {
             return `No Arcade Games stats found for ${playerName}. | ${getRandomHexColor()}`;
         }
 
         // Calculate total wins by summing all specific arcade game wins
-        const totalWins = (stats.wins_party ?? 0) +
+        const totalWins =
+            (stats.wins_party ?? 0) +
             (stats.wins_hole_in_the_wall ?? 0) +
             (stats.wins_galaxy_wars ?? 0) +
             (stats.wins_dragonwars2 ?? 0) +
@@ -52,5 +57,5 @@ export const arcadeHandler: StatsHandler = {
         const farmHuntWins = stats.wins_farm_hunt ?? 0;
 
         return `[Arcade] IGN: ${playerName} | WINS: ${totalWins} | COINS: ${formatNumber(coins)} | PARTY: ${partyWins} | HITW: ${holeInTheWallWins} | GALAXY: ${galaxyWarsWins} | DRAGON: ${dragonWarsWins} | MINIWALLS: ${miniWallsWins} | FARM: ${farmHuntWins} | ${getRandomHexColor()}`;
-    }
+    },
 };

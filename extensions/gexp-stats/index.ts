@@ -1,13 +1,13 @@
 /**
  * GEXP Stats Extension
- * 
+ *
  * Provides guild experience (GEXP) statistics for players including:
  * - Weekly total GEXP
- * - Daily average GEXP  
+ * - Daily average GEXP
  * - Detailed breakdown of weekly performance
- * 
+ *
  * Command: !gexp [username]
- * 
+ *
  * Configuration Options:
  * - enabled: Enable/disable the extension (default: true)
  * - guildRankCooldowns: Guild rank-based cooldown mappings in seconds
@@ -15,7 +15,7 @@
  *   - Leader: 10s
  *   - Moderator: 20s
  *   - Member: 60s
- * 
+ *
  * @author MiscGuild Bridge Bot Team
  * @version 1.0.0
  */
@@ -78,7 +78,9 @@ const getRandomHexColor = (): string => {
 };
 
 const isFetchError = (response: any): response is FetchError => {
-    return response && typeof response.status === 'number' && typeof response.statusText === 'string';
+    return (
+        response && typeof response.status === 'number' && typeof response.statusText === 'string'
+    );
 };
 
 /**
@@ -86,33 +88,36 @@ const isFetchError = (response: any): response is FetchError => {
  */
 const fetchMojangProfile = async (username: string): Promise<MojangProfile | FetchError> => {
     try {
-        const response = await fetch(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(username)}`, {
-            headers: {
-                'User-Agent': 'MiscellaneousBridge/2.6 (info@vliegenier04.dev)',
-                Accept: 'application/json',
-            },
-        });
-        
+        const response = await fetch(
+            `https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(username)}`,
+            {
+                headers: {
+                    'User-Agent': 'MiscellaneousBridge/2.6 (info@vliegenier04.dev)',
+                    Accept: 'application/json',
+                },
+            }
+        );
+
         if (response.status === 204) {
             return {
                 status: 204,
-                statusText: 'Player not found'
+                statusText: 'Player not found',
             };
         }
-        
+
         if (response.status === 200) {
             const data: any = await response.json();
             return { id: data.id, name: data.name };
         }
-        
+
         return {
             status: response.status,
-            statusText: response.statusText
+            statusText: response.statusText,
         };
     } catch (error) {
         return {
             status: 500,
-            statusText: 'Network error'
+            statusText: 'Network error',
         };
     }
 };
@@ -148,12 +153,12 @@ class GEXPStatsExtension {
         name: 'GEXP Stats Checker',
         version: '1.0.0',
         description: 'Check guild experience (GEXP) statistics for players',
-        author: 'MiscGuild Bridge Bot Team'
+        author: 'MiscGuild Bridge Bot Team',
     };
 
     private config: any = {};
     private api: ExtensionAPI | null = null;
-    
+
     // Cooldown tracking
     private cooldowns: Map<string, number> = new Map();
     private processingRequests: Set<string> = new Set();
@@ -162,29 +167,35 @@ class GEXPStatsExtension {
     // Helper to build cooldowns from environment
     private buildGuildRankCooldowns(): Record<string, number> {
         const cooldowns: Record<string, number> = {};
-        
+
         // Use environment variable rank names
-        if (process.env.RANK_1) cooldowns[process.env.RANK_1] = parseInt(process.env.COOLDOWN_RANK_1!);
-        if (process.env.RANK_2) cooldowns[process.env.RANK_2] = parseInt(process.env.COOLDOWN_RANK_2!);
-        if (process.env.RANK_3) cooldowns[process.env.RANK_3] = parseInt(process.env.COOLDOWN_RANK_3!);
-        if (process.env.RANK_4) cooldowns[process.env.RANK_4] = parseInt(process.env.COOLDOWN_RANK_4!);
-        if (process.env.RANK_5) cooldowns[process.env.RANK_5] = parseInt(process.env.COOLDOWN_RANK_5!);
-        if (process.env.RANK_LEADER) cooldowns[process.env.RANK_LEADER] = parseInt(process.env.COOLDOWN_LEADER!);
-        
+        if (process.env.RANK_1)
+            cooldowns[process.env.RANK_1] = parseInt(process.env.COOLDOWN_RANK_1!);
+        if (process.env.RANK_2)
+            cooldowns[process.env.RANK_2] = parseInt(process.env.COOLDOWN_RANK_2!);
+        if (process.env.RANK_3)
+            cooldowns[process.env.RANK_3] = parseInt(process.env.COOLDOWN_RANK_3!);
+        if (process.env.RANK_4)
+            cooldowns[process.env.RANK_4] = parseInt(process.env.COOLDOWN_RANK_4!);
+        if (process.env.RANK_5)
+            cooldowns[process.env.RANK_5] = parseInt(process.env.COOLDOWN_RANK_5!);
+        if (process.env.RANK_LEADER)
+            cooldowns[process.env.RANK_LEADER] = parseInt(process.env.COOLDOWN_LEADER!);
+
         // Add common variations
         cooldowns['GM'] = parseInt(process.env.COOLDOWN_LEADER!);
         cooldowns['Moderator'] = parseInt(process.env.COOLDOWN_RANK_2!);
-        
+
         return cooldowns;
     }
 
-    // Default configuration  
+    // Default configuration
     private get defaultConfig() {
         return {
             enabled: true,
             hypixelApiKey: process.env.HYPIXEL_API_KEY || '',
             cleanupInterval: 5 * 60 * 1000, // Clean up old cooldowns every 5 minutes
-            guildRankCooldowns: this.buildGuildRankCooldowns()
+            guildRankCooldowns: this.buildGuildRankCooldowns(),
         };
     }
 
@@ -194,16 +205,18 @@ class GEXPStatsExtension {
     async init(context: any, api: ExtensionAPI): Promise<void> {
         this.config = { ...this.defaultConfig, ...api.config };
         this.api = api;
-        
+
         api.log.info('Initializing GEXP Stats Extension...');
-        
+
         if (!this.config.enabled) {
             api.log.warn('GEXP Stats Extension is disabled in config');
             return;
         }
 
         if (!this.config.hypixelApiKey) {
-            api.log.error('Hypixel API key not found! Please set HYPIXEL_API_KEY environment variable');
+            api.log.error(
+                'Hypixel API key not found! Please set HYPIXEL_API_KEY environment variable'
+            );
             return;
         }
 
@@ -230,14 +243,16 @@ class GEXPStatsExtension {
      * Generate chat patterns
      */
     getChatPatterns(): ChatPattern[] {
-        return [{
-            id: 'gexp-stats',
-            extensionId: 'gexp-stats',
-            pattern: /^!gexp(?:\s+([A-Za-z0-9_]{1,16}))?/i,
-            priority: 1,
-            description: 'Check GEXP statistics for a player',
-            handler: this.handleGEXPCommand.bind(this)
-        }];
+        return [
+            {
+                id: 'gexp-stats',
+                extensionId: 'gexp-stats',
+                pattern: /^!gexp(?:\s+([A-Za-z0-9_]{1,16}))?/i,
+                priority: 1,
+                description: 'Check GEXP statistics for a player',
+                handler: this.handleGEXPCommand.bind(this),
+            },
+        ];
     }
 
     /**
@@ -256,13 +271,13 @@ class GEXPStatsExtension {
             return;
         }
 
-            // Check cooldown
-            const cooldownRemaining = this.isOnCooldown(requester, context.guildRank, Date.now());
-            if (cooldownRemaining !== null && cooldownRemaining > 0) {
-                const message = `${requester}, you can only use this command again in ${cooldownRemaining} seconds. Please wait. | ${getRandomHexColor()}`;
-                this.sendToChannel(context, api, message);
-                return;
-            }        // Mark request as processing and set cooldown
+        // Check cooldown
+        const cooldownRemaining = this.isOnCooldown(requester, context.guildRank, Date.now());
+        if (cooldownRemaining !== null && cooldownRemaining > 0) {
+            const message = `${requester}, you can only use this command again in ${cooldownRemaining} seconds. Please wait. | ${getRandomHexColor()}`;
+            this.sendToChannel(context, api, message);
+            return;
+        } // Mark request as processing and set cooldown
         this.processingRequests.add(requestKey);
         this.setCooldown(requester, Date.now());
 
@@ -302,7 +317,6 @@ class GEXPStatsExtension {
             this.sendToChannel(context, api, gexpMessage);
 
             api.log.success(`Sent GEXP stats for ${target}`);
-
         } catch (error) {
             api.log.error(`Error fetching GEXP stats:`, error);
             const errorMessage = `${requester}, An error occurred while fetching GEXP stats for ${target}. Please try again later. | ${getRandomHexColor()}`;
@@ -324,7 +338,7 @@ class GEXPStatsExtension {
         // Get GEXP values for the past 7 days
         const gexpValues = Object.keys(expHistory)
             .sort()
-            .map(date => expHistory[date] ?? 0);
+            .map((date) => expHistory[date] ?? 0);
 
         if (gexpValues.length === 0) {
             return `[GEXP] IGN: ${playerName} | No GEXP data found. Player may not have been active in the past 7 days. | ${getRandomHexColor()}`;
@@ -359,18 +373,18 @@ class GEXPStatsExtension {
                 }
                 return {
                     status: 404,
-                    statusText: 'Player not found in any guild'
+                    statusText: 'Player not found in any guild',
                 };
             }
 
             return {
                 status: response.status,
-                statusText: response.statusText
+                statusText: response.statusText,
             };
         } catch (error) {
             return {
                 status: 500,
-                statusText: 'Network error'
+                statusText: 'Network error',
             };
         }
     }
@@ -387,14 +401,18 @@ class GEXPStatsExtension {
         return num.toString();
     }
 
-
-
     /**
      * Handle fetch errors
      */
-    private handleFetchError(error: FetchError, requester: string, target: string, api: ExtensionAPI, context: ChatMessageContext): void {
+    private handleFetchError(
+        error: FetchError,
+        requester: string,
+        target: string,
+        api: ExtensionAPI,
+        context: ChatMessageContext
+    ): void {
         let message: string;
-        
+
         if (error.status === 404) {
             message = `${requester}, Player "${target}" not found. Please check the spelling. | ${getRandomHexColor()}`;
         } else if (error.status === 429) {
@@ -402,7 +420,7 @@ class GEXPStatsExtension {
         } else {
             message = `${requester}, API error occurred while fetching data for ${target}. Please try again later. | ${getRandomHexColor()}`;
         }
-        
+
         this.sendToChannel(context, api, message);
         api.log.warn(`Fetch error for ${target}: ${error.status} - ${error.statusText}`);
     }
@@ -416,7 +434,8 @@ class GEXPStatsExtension {
         now: number
     ): number | null {
         // Get guild rank cooldowns configuration
-        const rankCooldowns = this.config.guildRankCooldowns || this.defaultConfig.guildRankCooldowns;
+        const rankCooldowns =
+            this.config.guildRankCooldowns || this.defaultConfig.guildRankCooldowns;
         let cooldownSeconds: number | undefined;
 
         // Check for exact guild rank match first
@@ -424,11 +443,17 @@ class GEXPStatsExtension {
             cooldownSeconds = rankCooldowns[guildRank];
         } else if (guildRank) {
             // Try to match guild rank keywords (case-insensitive)
-            if (guildRank.toLowerCase().includes('guild master') || guildRank.toLowerCase().includes('guildmaster')) {
+            if (
+                guildRank.toLowerCase().includes('guild master') ||
+                guildRank.toLowerCase().includes('guildmaster')
+            ) {
                 cooldownSeconds = rankCooldowns['Guild Master'];
             } else if (guildRank.toLowerCase().includes('leader')) {
                 cooldownSeconds = rankCooldowns['Leader'];
-            } else if (guildRank.toLowerCase().includes('moderator') || guildRank.toLowerCase().includes('mod')) {
+            } else if (
+                guildRank.toLowerCase().includes('moderator') ||
+                guildRank.toLowerCase().includes('mod')
+            ) {
                 cooldownSeconds = rankCooldowns['Moderator'];
             } else if (guildRank.toLowerCase().includes('member')) {
                 cooldownSeconds = rankCooldowns['Member'];
@@ -476,15 +501,17 @@ class GEXPStatsExtension {
     private cleanupOldCooldowns(): void {
         const now = Date.now();
         const maxAge = 10 * 60 * 1000; // 10 minutes
-        
+
         for (const [playerName, timestamp] of this.cooldowns.entries()) {
             if (now - timestamp > maxAge) {
                 this.cooldowns.delete(playerName);
             }
         }
-        
+
         if (this.config.debugMode && this.api) {
-            this.api.log.debug(`Cleaned up old GEXP cooldowns, ${this.cooldowns.size} active cooldowns remaining`);
+            this.api.log.debug(
+                `Cleaned up old GEXP cooldowns, ${this.cooldowns.size} active cooldowns remaining`
+            );
         }
     }
 
@@ -497,7 +524,7 @@ class GEXPStatsExtension {
             clearInterval(this.cleanupInterval);
             this.cleanupInterval = null;
         }
-        
+
         // Clear all cooldowns and processing requests
         this.cooldowns.clear();
         this.processingRequests.clear();

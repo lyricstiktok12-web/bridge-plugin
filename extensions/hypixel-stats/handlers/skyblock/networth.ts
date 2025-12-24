@@ -5,7 +5,12 @@
  */
 
 import { Achievements, SkyBlock, StatsHandler } from '../../types';
-import { getRandomHexColor, fetchSkyblockProfiles, fetchMojangProfile, isFetchError } from '../../utils';
+import {
+    getRandomHexColor,
+    fetchSkyblockProfiles,
+    fetchMojangProfile,
+    isFetchError,
+} from '../../utils';
 
 // Import the networth library
 let ProfileNetworthCalculator: any;
@@ -20,7 +25,12 @@ export const skyblockNetworthHandler: StatsHandler = {
     gameMode: 'SkyBlock Networth',
     command: 'sb networth',
     description: 'Check SkyBlock net worth overview',
-    buildStatsMessage: async (playerName: string, achievements?: Achievements, stats?: SkyBlock, api?: any): Promise<string> => {
+    buildStatsMessage: async (
+        playerName: string,
+        achievements?: Achievements,
+        stats?: SkyBlock,
+        api?: any
+    ): Promise<string> => {
         if (!ProfileNetworthCalculator) {
             return `Networth library unavailable. Use !networth subcommands | ${getRandomHexColor()}`;
         }
@@ -74,5 +84,5 @@ export const skyblockNetworthHandler: StatsHandler = {
             console.error('Networth calculation error:', error);
             return `Error calculating networth for ${playerName} | ${getRandomHexColor()}`;
         }
-    }
+    },
 };

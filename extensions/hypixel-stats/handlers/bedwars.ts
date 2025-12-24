@@ -9,13 +9,17 @@ export const bedwarsHandler: StatsHandler = {
     gameMode: 'Bedwars',
     command: 'bw',
     description: 'Check Bedwars stats',
-    buildStatsMessage: (playerName: string, achievements?: Achievements, stats?: Bedwars): string => {
+    buildStatsMessage: (
+        playerName: string,
+        achievements?: Achievements,
+        stats?: Bedwars
+    ): string => {
         if (!achievements || !stats) {
             return `No Bedwars stats found for ${playerName}. Are they nicked? | ${getRandomHexColor()}`;
         }
 
         const level = achievements.bedwars_level ?? 0;
-        
+
         // Individual game mode stats
         const soloWins = stats.eight_one_wins_bedwars ?? 0;
         const doublesWins = stats.eight_two_wins_bedwars ?? 0;
@@ -55,11 +59,32 @@ export const bedwarsHandler: StatsHandler = {
 
         // Calculate totals
         const totalWins = soloWins + doublesWins + threesWins + foursWins + foursFoursWins;
-        const totalLosses = soloLosses + doublesLosses + threesLosses + foursLosses + foursFoursLosses;
-        const totalBedBreaks = soloBedBreaks + doublesBedBreaks + threesBedBreaks + foursBedBreaks + foursFoursBedBreaks;
-        const totalBedLosses = soloBedLosses + doublesBedLosses + threesBedLosses + foursBedLosses + foursFoursBedLosses;
-        const totalFinalKills = soloFinalKills + doublesFinalKills + threesFinalKills + foursFinalKills + foursFoursFinalKills;
-        const totalFinalDeaths = soloFinalDeaths + doublesFinalDeaths + threesFinalDeaths + foursFinalDeaths + foursFoursFinalDeaths;
+        const totalLosses =
+            soloLosses + doublesLosses + threesLosses + foursLosses + foursFoursLosses;
+        const totalBedBreaks =
+            soloBedBreaks +
+            doublesBedBreaks +
+            threesBedBreaks +
+            foursBedBreaks +
+            foursFoursBedBreaks;
+        const totalBedLosses =
+            soloBedLosses +
+            doublesBedLosses +
+            threesBedLosses +
+            foursBedLosses +
+            foursFoursBedLosses;
+        const totalFinalKills =
+            soloFinalKills +
+            doublesFinalKills +
+            threesFinalKills +
+            foursFinalKills +
+            foursFoursFinalKills;
+        const totalFinalDeaths =
+            soloFinalDeaths +
+            doublesFinalDeaths +
+            threesFinalDeaths +
+            foursFinalDeaths +
+            foursFoursFinalDeaths;
 
         // Calculate ratios
         const fkdr = calculateRatio(totalFinalKills, totalFinalDeaths);
@@ -69,7 +94,7 @@ export const bedwarsHandler: StatsHandler = {
         const levelDisplay = getBedwarsStarColor(level);
 
         return `[BedWars] ${levelDisplay} ${playerName} | WINS: ${totalWins} | FINALS: ${totalFinalKills} | FKDR: ${fkdr} | BBLR: ${bblr} | WLR: ${wlr} | ${getRandomHexColor()}`;
-    }
+    },
 };
 
 export const bedwarsSoloHandler: StatsHandler = {
@@ -77,7 +102,11 @@ export const bedwarsSoloHandler: StatsHandler = {
     command: 'bw solo',
     aliases: ['bw 1s', 'bw solos'],
     description: 'Check Bedwars solo stats',
-    buildStatsMessage: (playerName: string, achievements?: Achievements, stats?: Bedwars): string => {
+    buildStatsMessage: (
+        playerName: string,
+        achievements?: Achievements,
+        stats?: Bedwars
+    ): string => {
         if (!achievements || !stats) {
             return `No Bedwars solo stats found for ${playerName}. Are they nicked? | ${getRandomHexColor()}`;
         }
@@ -96,7 +125,7 @@ export const bedwarsSoloHandler: StatsHandler = {
         const levelDisplay = getBedwarsStarColor(level);
 
         return `[BW Solo] ${levelDisplay} ${playerName} | WINS: ${wins} | FINALS: ${finalKills} | FKDR: ${fkdr} | BBLR: ${bblr} | WLR: ${wlr} | ${getRandomHexColor()}`;
-    }
+    },
 };
 
 export const bedwarsDoublesHandler: StatsHandler = {
@@ -104,7 +133,11 @@ export const bedwarsDoublesHandler: StatsHandler = {
     command: 'bw doubles',
     aliases: ['bw 2s', 'bw duos'],
     description: 'Check Bedwars doubles stats',
-    buildStatsMessage: (playerName: string, achievements?: Achievements, stats?: Bedwars): string => {
+    buildStatsMessage: (
+        playerName: string,
+        achievements?: Achievements,
+        stats?: Bedwars
+    ): string => {
         if (!achievements || !stats) {
             return `No Bedwars doubles stats found for ${playerName}. Are they nicked? | ${getRandomHexColor()}`;
         }
@@ -123,7 +156,7 @@ export const bedwarsDoublesHandler: StatsHandler = {
         const levelDisplay = getBedwarsStarColor(level);
 
         return `[BW Doubles] ${levelDisplay} ${playerName} | WINS: ${wins} | FINALS: ${finalKills} | FKDR: ${fkdr} | BBLR: ${bblr} | WLR: ${wlr} | ${getRandomHexColor()}`;
-    }
+    },
 };
 
 export const bedwarsThreesHandler: StatsHandler = {
@@ -131,7 +164,11 @@ export const bedwarsThreesHandler: StatsHandler = {
     command: 'bw threes',
     aliases: ['bw 3s', 'bw 3v3', 'bw trios'],
     description: 'Check Bedwars threes stats',
-    buildStatsMessage: (playerName: string, achievements?: Achievements, stats?: Bedwars): string => {
+    buildStatsMessage: (
+        playerName: string,
+        achievements?: Achievements,
+        stats?: Bedwars
+    ): string => {
         if (!achievements || !stats) {
             return `No Bedwars threes stats found for ${playerName}. Are they nicked? | ${getRandomHexColor()}`;
         }
@@ -150,7 +187,7 @@ export const bedwarsThreesHandler: StatsHandler = {
         const levelDisplay = getBedwarsStarColor(level);
 
         return `[BW Threes] ${levelDisplay} ${playerName} | WINS: ${wins} | FINALS: ${finalKills} | FKDR: ${fkdr} | BBLR: ${bblr} | WLR: ${wlr} | ${getRandomHexColor()}`;
-    }
+    },
 };
 
 export const bedwarsFoursHandler: StatsHandler = {
@@ -158,7 +195,11 @@ export const bedwarsFoursHandler: StatsHandler = {
     command: 'bw fours',
     aliases: ['bw 4s', 'bw 4v4v4v4', 'bw quads'],
     description: 'Check Bedwars fours stats',
-    buildStatsMessage: (playerName: string, achievements?: Achievements, stats?: Bedwars): string => {
+    buildStatsMessage: (
+        playerName: string,
+        achievements?: Achievements,
+        stats?: Bedwars
+    ): string => {
         if (!achievements || !stats) {
             return `No Bedwars fours stats found for ${playerName}. Are they nicked? | ${getRandomHexColor()}`;
         }
@@ -177,14 +218,18 @@ export const bedwarsFoursHandler: StatsHandler = {
         const levelDisplay = getBedwarsStarColor(level);
 
         return `[BW 4s] ${levelDisplay} ${playerName} | WINS: ${wins} | FINALS: ${finalKills} | FKDR: ${fkdr} | BBLR: ${bblr} | WLR: ${wlr} | ${getRandomHexColor()}`;
-    }
+    },
 };
 
 export const bedwars4v4Handler: StatsHandler = {
     gameMode: 'Bedwars',
     command: 'bw 4v4',
     description: 'Check Bedwars 4v4 stats',
-    buildStatsMessage: (playerName: string, achievements?: Achievements, stats?: Bedwars): string => {
+    buildStatsMessage: (
+        playerName: string,
+        achievements?: Achievements,
+        stats?: Bedwars
+    ): string => {
         if (!achievements || !stats) {
             return `No Bedwars 4v4 stats found for ${playerName}. Are they nicked? | ${getRandomHexColor()}`;
         }
@@ -203,5 +248,5 @@ export const bedwars4v4Handler: StatsHandler = {
         const levelDisplay = getBedwarsStarColor(level);
 
         return `[BW 4v4] ${levelDisplay} ${playerName} | WINS: ${wins} | FINALS: ${finalKills} | FKDR: ${fkdr} | BBLR: ${bblr} | WLR: ${wlr} | ${getRandomHexColor()}`;
-    }
+    },
 };

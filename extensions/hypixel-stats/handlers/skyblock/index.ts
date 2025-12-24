@@ -9,14 +9,14 @@ export { skyblockDungeonsHandler } from './dungeons';
 export { skyblockNetworthHandler } from './networth';
 
 // Networth subcommand handlers
-export { 
+export {
     networthArmorHandler,
     networthWardrobeHandler,
     networthInventoryHandler,
     networthStorageHandler,
     networthEquipmentHandler,
     networthEnderchestHandler,
-    networthPetsHandler
+    networthPetsHandler,
 } from './networth-all';
 
 import { skyblockOverviewHandler } from './overview';
@@ -26,14 +26,14 @@ import { skyblockDungeonsHandler } from './dungeons';
 import { skyblockNetworthHandler } from './networth';
 
 // Networth subcommand handlers
-import { 
+import {
     networthArmorHandler,
     networthWardrobeHandler,
     networthInventoryHandler,
     networthStorageHandler,
     networthEquipmentHandler,
     networthEnderchestHandler,
-    networthPetsHandler
+    networthPetsHandler,
 } from './networth-all';
 
 export const allSkyblockHandlers = [
@@ -48,5 +48,5 @@ export const allSkyblockHandlers = [
     networthStorageHandler,
     networthEquipmentHandler,
     networthEnderchestHandler,
-    networthPetsHandler
+    networthPetsHandler,
 ];

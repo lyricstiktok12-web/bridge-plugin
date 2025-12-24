@@ -43,21 +43,20 @@ export default class Bridge {
 
     private async start() {
         // Load Discord stuff in parallel (doesn't depend on extensions)
-        await Promise.all([
-            this.discord.loadCommands(),
-            this.discord.loadEvents(this),
-        ]);
+        await Promise.all([this.discord.loadCommands(), this.discord.loadEvents(this)]);
 
         // Load and enable extensions
         consola.info('Loading Mineflayer extensions...');
         this.extensionManager.addExtensionDirectory('./extensions');
         await this.extensionManager.loadExtensions();
         await this.extensionManager.enableAllExtensions();
-        
+
         // Log extension stats
         const stats = this.extensionManager.getExtensionStats();
-        consola.info(`Extensions: ${stats.enabled}/${stats.total} enabled, ${stats.chatPatterns} patterns registered`);
-        
+        consola.info(
+            `Extensions: ${stats.enabled}/${stats.total} enabled, ${stats.chatPatterns} patterns registered`
+        );
+
         // Then load Mineflayer events (which need extensions to be loaded)
         await this.mineflayer.loadEvents(this);
 
@@ -66,7 +65,7 @@ export default class Bridge {
 
     public async shutdown() {
         consola.info('Shutting down bridge...');
-        
+
         try {
             // Disable all extensions
             const extensionList = this.extensionManager.getExtensionStats().list;
@@ -75,7 +74,7 @@ export default class Bridge {
                     await this.extensionManager.disableExtension(extension.id);
                 }
             }
-            
+
             this.discord.destroy();
             // Add any other cleanup needed
         } catch (error) {

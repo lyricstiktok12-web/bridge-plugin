@@ -18,13 +18,10 @@ export const copsAndCrimsHandler: StatsHandler = {
         const deaths = stats.deaths ?? 0;
         const wins = stats.game_wins ?? 0;
         const roundWins = stats.round_wins ?? 0;
-        const shots = stats.shots_fired ?? 0;
-        const copKills = stats.cop_kills ?? 0;
-        const criminalKills = stats.criminal_kills ?? 0;
 
         // Calculate ratios
         const kdr = calculateRatio(kills, deaths);
 
         return `[Cops and Crims] IGN: ${playerName} | WINS: ${wins} | KDR: ${kdr} | KILLS: ${formatNumber(kills)} | ROUNDS: ${roundWins} | ${getRandomHexColor()}`;
-    }
+    },
 };

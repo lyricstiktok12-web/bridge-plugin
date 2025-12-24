@@ -12,7 +12,7 @@ async function buildExtensions() {
     consola.info('🏗️  Building Mineflayer Extensions...');
 
     const extensionsDir = path.join(process.cwd(), 'extensions');
-    
+
     // Check if extensions directory exists
     if (!fs.existsSync(extensionsDir)) {
         consola.info('📁 No extensions directory found, creating...');
@@ -22,9 +22,10 @@ async function buildExtensions() {
     }
 
     // Get all extension directories
-    const extensionDirs = fs.readdirSync(extensionsDir, { withFileTypes: true })
-        .filter(dirent => dirent.isDirectory())
-        .map(dirent => dirent.name);
+    const extensionDirs = fs
+        .readdirSync(extensionsDir, { withFileTypes: true })
+        .filter((dirent) => dirent.isDirectory())
+        .map((dirent) => dirent.name);
 
     if (extensionDirs.length === 0) {
         consola.info('📦 No extensions found to build');
@@ -54,11 +55,11 @@ async function buildExtensions() {
             if (!fs.existsSync(tsConfigPath)) {
                 const tsConfig = {
                     compilerOptions: {
-                        target: "ES2020",
-                        module: "commonjs",
-                        lib: ["ES2020"],
-                        outDir: "./dist",
-                        rootDir: "./",
+                        target: 'ES2020',
+                        module: 'commonjs',
+                        lib: ['ES2020'],
+                        outDir: './dist',
+                        rootDir: './',
                         strict: true,
                         esModuleInterop: true,
                         skipLibCheck: true,
@@ -66,10 +67,10 @@ async function buildExtensions() {
                         declaration: true,
                         declarationMap: true,
                         sourceMap: true,
-                        moduleResolution: "node"
+                        moduleResolution: 'node',
                     },
-                    include: ["*.ts"],
-                    exclude: ["node_modules", "dist"]
+                    include: ['*.ts'],
+                    exclude: ['node_modules', 'dist'],
                 };
 
                 fs.writeFileSync(tsConfigPath, JSON.stringify(tsConfig, null, 2));
@@ -78,19 +79,21 @@ async function buildExtensions() {
 
             // Build the extension
             consola.start(`🔨 Building ${extensionDir}...`);
-            
+
             process.chdir(extensionPath);
             execSync('npx tsc', { stdio: 'pipe' });
-            
+
             consola.success(`✅ Built ${extensionDir}`);
             built++;
-
         } catch (error) {
             consola.error(`❌ Failed to build ${extensionDir}:`, error.message);
-            
+
             // Show more details if in debug mode
             if (process.env.NODE_ENV === 'development') {
-                consola.debug('Build error details:', error.stdout?.toString() || error.stderr?.toString());
+                consola.debug(
+                    'Build error details:',
+                    error.stdout?.toString() || error.stderr?.toString()
+                );
             }
         } finally {
             // Return to project root
@@ -105,13 +108,13 @@ async function buildExtensions() {
             `📦 Total: ${extensionDirs.length} extensions`,
             `✅ Built: ${built} extensions`,
             `⚠️  Skipped: ${skipped} extensions`,
-            built > 0 ? '🎉 Build completed successfully!' : '📋 No extensions were built'
-        ].join('\n')
+            built > 0 ? '🎉 Build completed successfully!' : '📋 No extensions were built',
+        ].join('\n'),
     });
 }
 
 // Run the build
-buildExtensions().catch(error => {
+buildExtensions().catch((error) => {
     consola.error('❌ Extension build failed:', error);
     process.exit(1);
 });

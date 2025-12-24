@@ -12,25 +12,25 @@ This extension provides comprehensive Hypixel player statistics checking with su
 
 ## Supported Commands
 
-| Command | Game Mode | Description |
-|---------|-----------|-------------|
-| `!bw <username>` | Bedwars | Shows stars, wins, losses, finals, beds broken |
-| `!sw <username>` | SkyWars | Shows level, wins, losses, kills, deaths |
-| `!duels <username>` | Duels | Shows overall wins, losses, and best game mode |
-| `!uhc <username>` | UHC | Shows wins, kills, deaths, and score |
-| `!bb <username>` | Build Battle | Shows score, wins, and correct guesses |
-| `!mm <username>` | Murder Mystery | Shows wins, kills, and best role |
-| `!tnt <username>` | TNT Games | Shows wins across all TNT game modes |
-| `!mw <username>` | Mega Walls | Shows wins, kills, deaths, and best class |
-| `!arcade <username>` | Arcade | Shows wins across arcade games |
+| Command              | Game Mode      | Description                                    |
+| -------------------- | -------------- | ---------------------------------------------- |
+| `!bw <username>`     | Bedwars        | Shows stars, wins, losses, finals, beds broken |
+| `!sw <username>`     | SkyWars        | Shows level, wins, losses, kills, deaths       |
+| `!duels <username>`  | Duels          | Shows overall wins, losses, and best game mode |
+| `!uhc <username>`    | UHC            | Shows wins, kills, deaths, and score           |
+| `!bb <username>`     | Build Battle   | Shows score, wins, and correct guesses         |
+| `!mm <username>`     | Murder Mystery | Shows wins, kills, and best role               |
+| `!tnt <username>`    | TNT Games      | Shows wins across all TNT game modes           |
+| `!mw <username>`     | Mega Walls     | Shows wins, kills, deaths, and best class      |
+| `!arcade <username>` | Arcade         | Shows wins across arcade games                 |
 
 ## Configuration
 
 ```json
 {
-  "enabled": true,
-  "cooldownDuration": 5000,
-  "apiTimeout": 10000
+    "enabled": true,
+    "cooldownDuration": 5000,
+    "apiTimeout": 10000
 }
 ```
 
@@ -77,6 +77,7 @@ Once loaded, the extension automatically registers all game mode patterns and ha
 ## Error Handling
 
 The extension handles various error scenarios:
+
 - Invalid usernames
 - Player not found
 - API timeouts
@@ -89,11 +90,12 @@ Each game mode handler implements the `StatsHandler` interface:
 
 ```typescript
 interface StatsHandler {
-  buildStatsMessage(playerData: HypixelPlayerProfile, username: string): string;
+    buildStatsMessage(playerData: HypixelPlayerProfile, username: string): string;
 }
 ```
 
 To add a new game mode:
+
 1. Create a new handler in the `handlers/` directory
 2. Implement the `StatsHandler` interface
 3. Add the handler to the exports in `handlers/index.ts`

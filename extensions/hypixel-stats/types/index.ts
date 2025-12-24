@@ -312,10 +312,10 @@ export interface MCGO {
 export interface SkyBlock {
     // Player Profile Info
     profiles?: { [profileName: string]: any };
-    
+
     // Experience and levels
     experience?: number;
-    
+
     // SkyBlock skills
     skill_farming?: number;
     skill_mining?: number;
@@ -328,7 +328,7 @@ export interface SkyBlock {
     skill_runecrafting?: number;
     skill_social?: number;
     skill_taming?: number;
-    
+
     // Collections
     collection_wheat?: number;
     collection_carrot?: number;
@@ -340,7 +340,7 @@ export interface SkyBlock {
     collection_cactus?: number;
     collection_sugar_cane?: number;
     collection_nether_wart?: number;
-    
+
     // Mining collections
     collection_cobblestone?: number;
     collection_iron_ingot?: number;
@@ -354,7 +354,7 @@ export interface SkyBlock {
     collection_glowstone_dust?: number;
     collection_quartz?: number;
     collection_ender_stone?: number;
-    
+
     // Combat collections
     collection_rotten_flesh?: number;
     collection_bone?: number;
@@ -366,7 +366,7 @@ export interface SkyBlock {
     collection_magma_cream?: number;
     collection_ghast_tear?: number;
     collection_slime_ball?: number;
-    
+
     // Foraging collections
     collection_log?: number;
     collection_log_2?: number;
@@ -375,7 +375,7 @@ export interface SkyBlock {
     collection_log_birch?: number;
     collection_log_acacia?: number;
     collection_log_dark_oak?: number;
-    
+
     // Fishing collections
     collection_raw_fish?: number;
     collection_raw_salmon?: number;
@@ -387,7 +387,7 @@ export interface SkyBlock {
     collection_water_lily?: number;
     collection_ink_sack?: number;
     collection_sponge?: number;
-    
+
     // Pet info
     pets?: Array<{
         uuid?: string;
@@ -398,7 +398,7 @@ export interface SkyBlock {
         candyUsed?: number;
         skin?: string;
     }>;
-    
+
     // Dungeon stats
     dungeons?: {
         dungeon_types?: {
@@ -422,7 +422,7 @@ export interface SkyBlock {
             tank?: { experience?: number };
         };
     };
-    
+
     // Slayer stats
     slayer_bosses?: {
         zombie?: {
@@ -480,10 +480,10 @@ export interface SkyBlock {
             kills_tier_4?: number;
         };
     };
-    
+
     // Bank and purse
     coin_purse?: number;
-    
+
     // Misc stats
     deaths?: number;
     kills?: number;
@@ -496,7 +496,7 @@ export interface SkyBlock {
     auctions_created?: number;
     auctions_fees?: number;
     auctions_completed?: number;
-    
+
     // Jacob's farming
     jacobs_contest?: {
         medals_inv?: {
@@ -539,5 +539,10 @@ export interface StatsHandler {
     command: string;
     aliases?: string[]; // Optional array of alternative commands
     description: string;
-    buildStatsMessage: (playerName: string, achievements?: Achievements, stats?: any, api?: any) => string | Promise<string>;
+    buildStatsMessage: (
+        playerName: string,
+        achievements?: Achievements,
+        stats?: any,
+        api?: any
+    ) => string | Promise<string>;
 }

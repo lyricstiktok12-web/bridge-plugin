@@ -1,6 +1,6 @@
 /**
  * Mineflayer Extension Template Generator
- * 
+ *
  * Generates extension templates specifically for Mineflayer bots
  */
 
@@ -21,38 +21,40 @@ export class MineflayerExtensionTemplateGenerator {
     /**
      * Generate a new extension from template
      */
-    async generateExtension(outputDir: string, options: ExtensionTemplateOptions): Promise<boolean> {
+    async generateExtension(
+        outputDir: string,
+        options: ExtensionTemplateOptions
+    ): Promise<boolean> {
         try {
             const extensionDir = path.join(outputDir, options.id);
-            
+
             // Create extension directory
             await fs.mkdir(extensionDir, { recursive: true });
-            
+
             // Generate package.json
             await this.generatePackageJson(extensionDir, options);
-            
+
             // Generate main extension file
             await this.generateMainFile(extensionDir, options);
-            
+
             // Generate README
             await this.generateReadme(extensionDir, options);
-            
+
             // Generate feature-specific files
             if (options.features?.includes('chatPatterns')) {
                 await this.generateChatPatternsExample(extensionDir, options);
             }
-            
+
             if (options.features?.includes('commands')) {
                 await this.generateCommandsExample(extensionDir, options);
             }
-            
+
             if (options.features?.includes('config')) {
                 await this.generateConfigExample(extensionDir, options);
             }
-            
+
             consola.success(`Extension template generated at: ${extensionDir}`);
             return true;
-            
         } catch (error) {
             consola.error('Error generating extension template:', error);
             return false;
@@ -62,7 +64,10 @@ export class MineflayerExtensionTemplateGenerator {
     /**
      * Generate package.json
      */
-    private async generatePackageJson(extensionDir: string, options: ExtensionTemplateOptions): Promise<void> {
+    private async generatePackageJson(
+        extensionDir: string,
+        options: ExtensionTemplateOptions
+    ): Promise<void> {
         const packageJson = {
             name: options.id,
             version: options.version || '1.0.0',
@@ -78,25 +83,27 @@ export class MineflayerExtensionTemplateGenerator {
                 chatPatterns: options.features?.includes('chatPatterns') ? ['patterns'] : undefined,
                 commands: options.features?.includes('commands') ? ['commands'] : undefined,
                 events: options.features?.includes('events') ? ['events'] : undefined,
-                configSchema: options.features?.includes('config') ? {
-                    type: 'object',
-                    properties: {
-                        enabled: {
-                            type: 'boolean',
-                            default: true,
-                            description: 'Whether the extension is enabled'
-                        }
-                    }
-                } : undefined
+                configSchema: options.features?.includes('config')
+                    ? {
+                          type: 'object',
+                          properties: {
+                              enabled: {
+                                  type: 'boolean',
+                                  default: true,
+                                  description: 'Whether the extension is enabled',
+                              },
+                          },
+                      }
+                    : undefined,
             },
             scripts: {
                 build: 'tsc',
-                dev: 'tsc --watch'
+                dev: 'tsc --watch',
             },
             devDependencies: {
                 typescript: '^5.0.0',
-                '@types/node': '^20.0.0'
-            }
+                '@types/node': '^20.0.0',
+            },
         };
 
         await fs.writeFile(
@@ -108,7 +115,10 @@ export class MineflayerExtensionTemplateGenerator {
     /**
      * Generate main extension file
      */
-    private async generateMainFile(extensionDir: string, options: ExtensionTemplateOptions): Promise<void> {
+    private async generateMainFile(
+        extensionDir: string,
+        options: ExtensionTemplateOptions
+    ): Promise<void> {
         const template = `/**
  * ${options.name} Extension
  * 
@@ -203,7 +213,9 @@ class ${options.name.replace(/[^a-zA-Z0-9]/g, '')}Extension {
         return this.config.enabled !== false;
     }
 
-${options.features?.includes('chatPatterns') ? `
+${
+    options.features?.includes('chatPatterns')
+        ? `
     /**
      * Define chat patterns that this extension handles
      */
@@ -242,7 +254,9 @@ ${options.features?.includes('chatPatterns') ? `
             });
         }
     }
-` : ''}
+`
+        : ''
+}
 }
 
 export default ${options.name.replace(/[^a-zA-Z0-9]/g, '')}Extension;
@@ -254,7 +268,10 @@ export default ${options.name.replace(/[^a-zA-Z0-9]/g, '')}Extension;
     /**
      * Generate README.md
      */
-    private async generateReadme(extensionDir: string, options: ExtensionTemplateOptions): Promise<void> {
+    private async generateReadme(
+        extensionDir: string,
+        options: ExtensionTemplateOptions
+    ): Promise<void> {
         const readme = `# ${options.name}
 
 ${options.description || `A Mineflayer extension: ${options.name}`}
@@ -283,12 +300,16 @@ ${options.features?.includes('chatPatterns') ? '- ✅ Chat pattern handling\n' :
 
 ## Usage
 
-${options.features?.includes('chatPatterns') ? `
+${
+    options.features?.includes('chatPatterns')
+        ? `
 ### Chat Commands
 
 - \`!${options.id.toLowerCase()}\` - Example command
 
-` : ''}
+`
+        : ''
+}
 
 ## Development
 
@@ -310,7 +331,10 @@ ${options.version || '1.0.0'}
     /**
      * Generate chat patterns example
      */
-    private async generateChatPatternsExample(extensionDir: string, options: ExtensionTemplateOptions): Promise<void> {
+    private async generateChatPatternsExample(
+        extensionDir: string,
+        options: ExtensionTemplateOptions
+    ): Promise<void> {
         const patternsDir = path.join(extensionDir, 'patterns');
         await fs.mkdir(patternsDir, { recursive: true });
 
@@ -341,7 +365,10 @@ export default chatPatterns;
     /**
      * Generate commands example
      */
-    private async generateCommandsExample(extensionDir: string, options: ExtensionTemplateOptions): Promise<void> {
+    private async generateCommandsExample(
+        extensionDir: string,
+        options: ExtensionTemplateOptions
+    ): Promise<void> {
         const commandsDir = path.join(extensionDir, 'commands');
         await fs.mkdir(commandsDir, { recursive: true });
 
@@ -410,7 +437,10 @@ export default {
     /**
      * Generate config example
      */
-    private async generateConfigExample(extensionDir: string, options: ExtensionTemplateOptions): Promise<void> {
+    private async generateConfigExample(
+        extensionDir: string,
+        options: ExtensionTemplateOptions
+    ): Promise<void> {
         const configExample = `/**
  * Configuration example for ${options.name}
  */

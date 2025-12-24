@@ -1,6 +1,6 @@
 /**
  * Mineflayer Extension Manager
- * 
+ *
  * A specialized extension system for Mineflayer bots focused on chat pattern routing
  */
 
@@ -8,7 +8,6 @@ import path from 'path';
 import fs from 'fs/promises';
 import { consola } from 'consola';
 import { EventEmitter } from 'events';
-import recursiveWalkDir from '../util/recursive-walk-dir';
 import Bridge from '../bridge';
 import { isCommandBanned } from '../blacklist/check-user-ban';
 
@@ -105,16 +104,16 @@ export class MineflayerExtensionManager extends EventEmitter {
 
     constructor(bridge: Bridge) {
         super();
-        
+
         // Set up message cleanup interval to prevent memory leaks
         setInterval(() => {
             this.processedMessages.clear();
         }, 60000); // Clear every minute
-        
+
         this.context = {
             bridge,
             bot: bridge.mineflayer.getBot(),
-            discord: bridge.discord
+            discord: bridge.discord,
         };
 
         this.extensionAPI = {
@@ -136,7 +135,7 @@ export class MineflayerExtensionManager extends EventEmitter {
                 },
                 executeCommand: (command: string) => {
                     bridge.mineflayer.getBot().chat(command);
-                }
+                },
             },
             discord: {
                 sendMessage: async (channelId: string, content: any) => {
@@ -158,15 +157,15 @@ export class MineflayerExtensionManager extends EventEmitter {
                     officer: process.env.OFFICER_CHANNEL_ID || '',
                     member: process.env.MEMBER_CHANNEL_ID || '',
                     error: process.env.ERROR_CHANNEL_ID || '',
-                    command: process.env.COMMAND_CHANNEL_ID || ''
-                }
+                    command: process.env.COMMAND_CHANNEL_ID || '',
+                },
             },
-            utils: {}
+            utils: {},
         };
-        
+
         this.extensionDirectories.add(path.join(process.cwd(), 'plugins'));
         this.extensionDirectories.add(path.join(process.cwd(), 'extensions'));
-        
+
         this.setupCentralChatListener();
     }
 
@@ -175,36 +174,43 @@ export class MineflayerExtensionManager extends EventEmitter {
      */
     private setupCentralChatListener(): void {
         if (this.isListeningToChat) return;
-        
+
         const bot = this.context.bot;
-        
+
         // Check if addChatPattern method exists (it's added by the bot's pattern system)
         if (typeof (bot as any).addChatPattern === 'function') {
             // Use the existing chat pattern system
             (bot as any).addChatPattern('extension_router', this.masterChatPattern, {
                 repeat: true,
-                parse: true
+                parse: true,
             });
-            
+
             bot.on('chat:extension_router', async (matches: RegExpMatchArray) => {
                 await this.processChatMessage(matches[0] || '');
             });
         } else {
             // Fallback to standard message event
-            bot.on('message', async (jsonMsg: any, position: string) => {
+            bot.on('message', async (jsonMsg: any, _position: string) => {
                 try {
                     // Convert message to string
-                    const messageStr = typeof jsonMsg === 'string' ? jsonMsg : (jsonMsg?.toString ? jsonMsg.toString() : '');
-                    
+                    const messageStr =
+                        typeof jsonMsg === 'string'
+                            ? jsonMsg
+                            : jsonMsg?.toString
+                              ? jsonMsg.toString()
+                              : '';
+
                     // Process the message through our extension system
                     await this.processChatMessage(messageStr);
-                    
                 } catch (error) {
-                    this.extensionAPI.log.error('Error processing message through extensions:', error);
+                    this.extensionAPI.log.error(
+                        'Error processing message through extensions:',
+                        error
+                    );
                 }
             });
         }
-        
+
         this.isListeningToChat = true;
         consola.debug('Central chat listener initialized');
     }
@@ -222,28 +228,30 @@ export class MineflayerExtensionManager extends EventEmitter {
     public async processChatMessage(rawMessage: string): Promise<void> {
         // Create a unique message hash to prevent duplicate processing
         const messageHash = `${Date.now()}-${rawMessage}`;
-        
+
         // Check if we've already processed this exact message recently
         if (this.processedMessages.has(messageHash)) {
             return;
         }
-        
+
         // Add to processed messages to prevent duplicates
         this.processedMessages.add(messageHash);
-        
+
         const messageContext = this.parseChatMessage(rawMessage);
         if (!messageContext) return;
 
         // Check if user is command-banned and trying to use a command (in-game only)
         if (this.isCommand(messageContext.message) && messageContext.username) {
             if (isCommandBanned(messageContext.username)) {
-                consola.warn(`⛔ Blocked command from command-banned user: ${messageContext.username} - Command: ${messageContext.message}`);
+                consola.warn(
+                    `⛔ Blocked command from command-banned user: ${messageContext.username} - Command: ${messageContext.message}`
+                );
                 return; // Don't process commands from command-banned users
             }
         }
 
         const patterns = Array.from(this.chatPatterns.values())
-            .filter(p => this.enabledExtensions.has(p.extensionId))
+            .filter((p) => this.enabledExtensions.has(p.extensionId))
             .sort((a, b) => a.priority - b.priority);
 
         for (const pattern of patterns) {
@@ -251,14 +259,15 @@ export class MineflayerExtensionManager extends EventEmitter {
             // If pattern starts with "Guild >" or similar, it expects raw message format
             // If pattern starts with "!" or similar command characters, it expects just the message content
             const patternSource = pattern.pattern.source;
-            const shouldUseRaw = patternSource.startsWith('^Guild >') || 
-                               patternSource.startsWith('^Officer >') ||
-                               patternSource.includes('Guild >') ||
-                               patternSource.includes('Officer >');
-            
+            const shouldUseRaw =
+                patternSource.startsWith('^Guild >') ||
+                patternSource.startsWith('^Officer >') ||
+                patternSource.includes('Guild >') ||
+                patternSource.includes('Officer >');
+
             const textToMatch = shouldUseRaw ? messageContext.raw : messageContext.message;
             const matches = textToMatch.match(pattern.pattern);
-            
+
             if (matches) {
                 try {
                     messageContext.matches = matches;
@@ -277,12 +286,14 @@ export class MineflayerExtensionManager extends EventEmitter {
      */
     private parseChatMessage(rawMessage: string): ChatMessageContext | null {
         // Updated guild pattern to match the original regex that captures guild rank
-        const guildChatPattern = /^(Guild|Officer) > (\[.*?\])?\s*([A-Za-z0-9_-]{2,17}).*?(\[.{1,15}\])?: (.*)$/;
-        const partyPattern = /^Party > (?:\[.*?\])?\s*([A-Za-z0-9_-]{2,17})\s*(?:\[.*?\])?:\s*(.*)$/;
+        const guildChatPattern =
+            /^(Guild|Officer) > (\[.*?\])?\s*([A-Za-z0-9_-]{2,17}).*?(\[.{1,15}\])?: (.*)$/;
+        const partyPattern =
+            /^Party > (?:\[.*?\])?\s*([A-Za-z0-9_-]{2,17})\s*(?:\[.*?\])?:\s*(.*)$/;
         const privatePattern = /^From (?:\[.*?\])?\s*([A-Za-z0-9_-]{2,17})\s*(?:\[.*?\])?: (.*)$/;
 
         let match: RegExpMatchArray | null;
-        
+
         if ((match = rawMessage.match(guildChatPattern))) {
             return {
                 message: match[5] || '',
@@ -291,27 +302,27 @@ export class MineflayerExtensionManager extends EventEmitter {
                 rank: match[2] ? match[2].replace(/[[\]]/g, '') : undefined, // Hypixel rank (remove brackets)
                 guildRank: match[4] ? match[4].replace(/[[\]]/g, '') : undefined, // Guild rank (remove brackets)
                 timestamp: new Date(),
-                raw: rawMessage
+                raw: rawMessage,
             };
         }
-        
+
         if ((match = rawMessage.match(partyPattern))) {
             return {
                 message: match[2] || '',
                 username: match[1] || '',
                 channel: 'Party',
                 timestamp: new Date(),
-                raw: rawMessage
+                raw: rawMessage,
             };
         }
-        
+
         if ((match = rawMessage.match(privatePattern))) {
             return {
                 message: match[2] || '',
                 username: match[1] || '',
                 channel: 'Private',
                 timestamp: new Date(),
-                raw: rawMessage
+                raw: rawMessage,
             };
         }
 
@@ -320,7 +331,7 @@ export class MineflayerExtensionManager extends EventEmitter {
             username: 'Unknown',
             channel: 'Unknown',
             timestamp: new Date(),
-            raw: rawMessage
+            raw: rawMessage,
         };
     }
 
@@ -329,15 +340,15 @@ export class MineflayerExtensionManager extends EventEmitter {
      */
     async loadExtensions(): Promise<Map<string, ExtensionLoadResult>> {
         const results = new Map<string, ExtensionLoadResult>();
-        
+
         for (const extensionsDir of this.extensionDirectories) {
             if (!(await this.pathExists(extensionsDir))) {
                 consola.warn(`Extension directory does not exist: ${extensionsDir}`);
                 continue;
             }
-            
+
             const entries = await fs.readdir(extensionsDir, { withFileTypes: true });
-            
+
             for (const entry of entries) {
                 if (entry.isDirectory()) {
                     const extensionPath = path.join(extensionsDir, entry.name);
@@ -346,7 +357,7 @@ export class MineflayerExtensionManager extends EventEmitter {
                 }
             }
         }
-        
+
         consola.info(`Loaded ${this.extensions.size} extensions`);
         return results;
     }
@@ -356,49 +367,52 @@ export class MineflayerExtensionManager extends EventEmitter {
      */
     async loadExtension(extensionDir: string): Promise<ExtensionLoadResult> {
         const result: ExtensionLoadResult = { success: false, warnings: [] };
-        
+
         try {
             const manifest = await this.loadExtensionManifest(extensionDir);
             if (!manifest) {
                 throw new Error('No valid manifest found');
             }
-            
+
             const mainFile = manifest.main || 'index.ts';
-            
+
             // Check for compiled version first (dist/index.js), then source (index.ts)
             let mainPath = path.join(extensionDir, 'dist', mainFile.replace(/\.ts$/, '.js'));
             if (!(await this.pathExists(mainPath))) {
                 mainPath = path.join(extensionDir, mainFile);
             }
-            
+
             if (!(await this.pathExists(mainPath))) {
-                throw new Error(`Main file not found: ${mainFile} (checked both compiled and source versions)`);
+                throw new Error(
+                    `Main file not found: ${mainFile} (checked both compiled and source versions)`
+                );
             }
-            
+
             delete require.cache[require.resolve(mainPath)];
             const ExtensionClass = (await import(mainPath)).default;
-            
+
             // Instantiate the extension class
             const extensionInstance = new ExtensionClass();
-            
+
             consola.debug(`Extension instance created for ${manifest.id}`);
-            consola.debug(`Extension has getChatPatterns method: ${typeof extensionInstance.getChatPatterns === 'function'}`);
-            
+            consola.debug(
+                `Extension has getChatPatterns method: ${typeof extensionInstance.getChatPatterns === 'function'}`
+            );
+
             const extension: MineflayerExtension = extensionInstance;
             extension.manifest = manifest;
-            
+
             this.extensions.set(manifest.id, extension);
-            
+
             result.success = true;
             result.extension = extension;
-            
+
             consola.debug(`Loaded extension: ${manifest.name} v${manifest.version}`);
-            
         } catch (error) {
             result.error = error instanceof Error ? error : new Error(String(error));
             consola.error(`Error loading extension at ${extensionDir}:`, result.error);
         }
-        
+
         return result;
     }
 
@@ -407,14 +421,14 @@ export class MineflayerExtensionManager extends EventEmitter {
      */
     private async loadExtensionManifest(extensionDir: string): Promise<ExtensionManifest | null> {
         const possibleFiles = ['extension.json', 'package.json'];
-        
+
         for (const fileName of possibleFiles) {
             const filePath = path.join(extensionDir, fileName);
-            
+
             if (await this.pathExists(filePath)) {
                 try {
                     const content = JSON.parse(await fs.readFile(filePath, 'utf8'));
-                    
+
                     if (fileName === 'package.json') {
                         return {
                             id: content.extension?.id || content.name,
@@ -424,7 +438,7 @@ export class MineflayerExtensionManager extends EventEmitter {
                             author: content.author,
                             dependencies: content.extension?.dependencies || [],
                             main: content.main,
-                            ...content.extension
+                            ...content.extension,
                         };
                     } else {
                         return {
@@ -432,7 +446,7 @@ export class MineflayerExtensionManager extends EventEmitter {
                             name: path.basename(extensionDir),
                             version: '1.0.0',
                             description: '',
-                            ...content
+                            ...content,
                         };
                     }
                 } catch (error) {
@@ -440,7 +454,7 @@ export class MineflayerExtensionManager extends EventEmitter {
                 }
             }
         }
-        
+
         return null;
     }
 
@@ -486,7 +500,6 @@ export class MineflayerExtensionManager extends EventEmitter {
             this.enabledExtensions.add(extensionId);
             consola.success(`Enabled extension: ${extension.manifest.name}`);
             return true;
-
         } catch (error) {
             consola.error(`Error enabling extension ${extensionId}:`, error);
             return false;
@@ -514,9 +527,10 @@ export class MineflayerExtensionManager extends EventEmitter {
             }
 
             // Remove chat patterns
-            const patternsToRemove = Array.from(this.chatPatterns.keys())
-                .filter(id => this.chatPatterns.get(id)?.extensionId === extensionId);
-            
+            const patternsToRemove = Array.from(this.chatPatterns.keys()).filter(
+                (id) => this.chatPatterns.get(id)?.extensionId === extensionId
+            );
+
             for (const patternId of patternsToRemove) {
                 this.chatPatterns.delete(patternId);
             }
@@ -528,7 +542,6 @@ export class MineflayerExtensionManager extends EventEmitter {
             this.enabledExtensions.delete(extensionId);
             consola.success(`Disabled extension: ${extension.manifest.name}`);
             return true;
-
         } catch (error) {
             consola.error(`Error disabling extension ${extensionId}:`, error);
             return false;
@@ -540,12 +553,12 @@ export class MineflayerExtensionManager extends EventEmitter {
      */
     async enableAllExtensions(): Promise<Map<string, boolean>> {
         const results = new Map<string, boolean>();
-        
+
         for (const extensionId of this.extensions.keys()) {
             const success = await this.enableExtension(extensionId);
             results.set(extensionId, success);
         }
-        
+
         return results;
     }
 
@@ -554,7 +567,9 @@ export class MineflayerExtensionManager extends EventEmitter {
      */
     registerChatPattern(pattern: ChatPattern): void {
         this.chatPatterns.set(pattern.id, pattern);
-        consola.debug(`Registered chat pattern: ${pattern.id} for extension ${pattern.extensionId}`);
+        consola.debug(
+            `Registered chat pattern: ${pattern.id} for extension ${pattern.extensionId}`
+        );
     }
 
     /**
@@ -569,21 +584,23 @@ export class MineflayerExtensionManager extends EventEmitter {
      * Get extension statistics
      */
     getExtensionStats() {
-        const enabledExtensions = Array.from(this.enabledExtensions).map(id => this.extensions.get(id)!);
-        
+        const enabledExtensions = Array.from(this.enabledExtensions).map(
+            (id) => this.extensions.get(id)!
+        );
+
         return {
             total: this.extensions.size,
             enabled: this.enabledExtensions.size,
             disabled: this.extensions.size - this.enabledExtensions.size,
             chatPatterns: this.chatPatterns.size,
-            list: enabledExtensions.map(ext => ({
+            list: enabledExtensions.map((ext) => ({
                 id: ext.manifest.id,
                 name: ext.manifest.name,
                 version: ext.manifest.version,
                 author: ext.manifest.author,
                 description: ext.manifest.description,
-                enabled: true
-            }))
+                enabled: true,
+            })),
         };
     }
 

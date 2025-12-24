@@ -9,7 +9,11 @@ export const skyblockDungeonsHandler: StatsHandler = {
     gameMode: 'SkyBlock Dungeons',
     command: 'sb dungeons',
     description: 'Check SkyBlock dungeon stats',
-    buildStatsMessage: (playerName: string, achievements?: Achievements, stats?: SkyBlock): string => {
+    buildStatsMessage: (
+        playerName: string,
+        achievements?: Achievements,
+        stats?: SkyBlock
+    ): string => {
         if (!stats || !stats.dungeons) {
             return `No SkyBlock dungeon data found for ${playerName}. Are they nicked? | ${getRandomHexColor()}`;
         }
@@ -28,21 +32,6 @@ export const skyblockDungeonsHandler: StatsHandler = {
         const f7Completions = floorCompletions['7'] ?? 0;
         const m7Completions = floorCompletions['master_7'] ?? 0;
 
-        // Class levels
-        const healerXP = classes.healer?.experience ?? 0;
-        const mageXP = classes.mage?.experience ?? 0;
-        const berserkXP = classes.berserk?.experience ?? 0;
-        const archerXP = classes.archer?.experience ?? 0;
-        const tankXP = classes.tank?.experience ?? 0;
-
-        const healerLevel = getClassLevel(healerXP);
-        const mageLevel = getClassLevel(mageXP);
-        const berserkLevel = getClassLevel(berserkXP);
-        const archerLevel = getClassLevel(archerXP);
-        const tankLevel = getClassLevel(tankXP);
-
-        const averageClassLevel = (healerLevel + mageLevel + berserkLevel + archerLevel + tankLevel) / 5;
-        
         // Get selected class level safely
         let selectedClassLevel = 0;
         if (selectedClass && selectedClass.toLowerCase() in classes) {
@@ -53,10 +42,9 @@ export const skyblockDungeonsHandler: StatsHandler = {
         // Secrets and other stats
         // Secrets are stored directly under dungeons.secrets
         const secretsFound = (dungeons as any)?.secrets ?? 0;
-        const mobsKilled = catacombs?.mobs_killed ?? 0;
 
         return `${playerName} Dungeons: Cata ${catacombsLevel} | ${selectedClass} ${selectedClassLevel} | F7: ${f7Completions} M7: ${m7Completions} | Secrets: ${secretsFound.toLocaleString()} | ${getRandomHexColor()}`;
-    }
+    },
 };
 
 /**
@@ -65,11 +53,11 @@ export const skyblockDungeonsHandler: StatsHandler = {
 function getCatacombsLevel(experience: number): number {
     // Dungeon XP requirements (cumulative XP needed for each level)
     const dungeonXPTable = [
-        0, 50, 125, 235, 395, 625, 955, 1425, 2095, 3045, 4385,
-        6275, 8940, 12700, 17960, 25340, 35640, 50040, 70040, 97640, 135640,
-        188140, 259640, 356640, 488640, 668640, 911640, 1239640, 1684640, 2284640, 3084640,
-        4149640, 5559640, 7459640, 9959640, 13259640, 17559640, 23159640, 30359640, 39559640, 51559640,
-        66559640, 85559640, 109559640, 139559640, 177559640, 225559640, 285559640, 360559640, 453559640, 569809640
+        0, 50, 125, 235, 395, 625, 955, 1425, 2095, 3045, 4385, 6275, 8940, 12700, 17960, 25340,
+        35640, 50040, 70040, 97640, 135640, 188140, 259640, 356640, 488640, 668640, 911640, 1239640,
+        1684640, 2284640, 3084640, 4149640, 5559640, 7459640, 9959640, 13259640, 17559640, 23159640,
+        30359640, 39559640, 51559640, 66559640, 85559640, 109559640, 139559640, 177559640,
+        225559640, 285559640, 360559640, 453559640, 569809640,
     ];
 
     for (let i = dungeonXPTable.length - 1; i >= 0; i--) {
@@ -86,11 +74,11 @@ function getCatacombsLevel(experience: number): number {
 function getClassLevel(experience: number): number {
     // Dungeon XP requirements (cumulative XP needed for each level)
     const dungeonXPTable = [
-        0, 50, 125, 235, 395, 625, 955, 1425, 2095, 3045, 4385,
-        6275, 8940, 12700, 17960, 25340, 35640, 50040, 70040, 97640, 135640,
-        188140, 259640, 356640, 488640, 668640, 911640, 1239640, 1684640, 2284640, 3084640,
-        4149640, 5559640, 7459640, 9959640, 13259640, 17559640, 23159640, 30359640, 39559640, 51559640,
-        66559640, 85559640, 109559640, 139559640, 177559640, 225559640, 285559640, 360559640, 453559640, 569809640
+        0, 50, 125, 235, 395, 625, 955, 1425, 2095, 3045, 4385, 6275, 8940, 12700, 17960, 25340,
+        35640, 50040, 70040, 97640, 135640, 188140, 259640, 356640, 488640, 668640, 911640, 1239640,
+        1684640, 2284640, 3084640, 4149640, 5559640, 7459640, 9959640, 13259640, 17559640, 23159640,
+        30359640, 39559640, 51559640, 66559640, 85559640, 109559640, 139559640, 177559640,
+        225559640, 285559640, 360559640, 453559640, 569809640,
     ];
 
     for (let i = dungeonXPTable.length - 1; i >= 0; i--) {

@@ -25,7 +25,7 @@ export const duelsHandler: StatsHandler = {
         const wlr = calculateRatio(wins, losses);
 
         return `[Duels] IGN: ${playerName} | WINS: ${wins} | KDR: ${kdr} | KILLS: ${formatNumber(kills)} | WLR: ${wlr} | ${getRandomHexColor()}`;
-    }
+    },
 };
 
 // UHC Duels Handler
@@ -47,7 +47,7 @@ export const uhcDuelsHandler: StatsHandler = {
         const wlr = calculateRatio(wins, losses);
 
         return `[UHC Duels] IGN: ${playerName} | WINS: ${wins} | LOSSES: ${losses} | WLR: ${wlr} | Overall KDR: ${kdr} | ${getRandomHexColor()}`;
-    }
+    },
 };
 
 // SkyWars Duels Handler
@@ -69,7 +69,7 @@ export const swDuelsHandler: StatsHandler = {
         const wlr = calculateRatio(wins, losses);
 
         return `[SkyWars Duels] IGN: ${playerName} | WINS: ${wins} | LOSSES: ${losses} | WLR: ${wlr} | Overall KDR: ${kdr} | ${getRandomHexColor()}`;
-    }
+    },
 };
 
 // Classic Duels Handler
@@ -91,7 +91,7 @@ export const classicDuelsHandler: StatsHandler = {
         const wlr = calculateRatio(wins, losses);
 
         return `[Classic Duels] IGN: ${playerName} | WINS: ${wins} | LOSSES: ${losses} | WLR: ${wlr} | Overall KDR: ${kdr} | ${getRandomHexColor()}`;
-    }
+    },
 };
 
 // Bow Duels Handler
@@ -113,7 +113,7 @@ export const bowDuelsHandler: StatsHandler = {
         const wlr = calculateRatio(wins, losses);
 
         return `[Bow Duels] IGN: ${playerName} | WINS: ${wins} | LOSSES: ${losses} | WLR: ${wlr} | Overall KDR: ${kdr} | ${getRandomHexColor()}`;
-    }
+    },
 };
 
 // OP Duels Handler
@@ -135,7 +135,7 @@ export const opDuelsHandler: StatsHandler = {
         const wlr = calculateRatio(wins, losses);
 
         return `[OP Duels] IGN: ${playerName} | WINS: ${wins} | LOSSES: ${losses} | WLR: ${wlr} | Overall KDR: ${kdr} | ${getRandomHexColor()}`;
-    }
+    },
 };
 
 // Combo Duels Handler
@@ -157,7 +157,7 @@ export const comboDuelsHandler: StatsHandler = {
         const wlr = calculateRatio(wins, losses);
 
         return `[Combo Duels] IGN: ${playerName} | WINS: ${wins} | LOSSES: ${losses} | WLR: ${wlr} | Overall KDR: ${kdr} | ${getRandomHexColor()}`;
-    }
+    },
 };
 
 // Potion Duels Handler
@@ -179,5 +179,5 @@ export const potionDuelsHandler: StatsHandler = {
         const wlr = calculateRatio(wins, losses);
 
         return `[Potion Duels] IGN: ${playerName} | WINS: ${wins} | LOSSES: ${losses} | WLR: ${wlr} | Overall KDR: ${kdr} | ${getRandomHexColor()}`;
-    }
+    },
 };

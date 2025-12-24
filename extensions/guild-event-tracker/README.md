@@ -16,11 +16,13 @@ Track GEXP and game statistics for all guild members over a defined time period 
 All commands are restricted to Guild Masters and Leaders only.
 
 ### Start Event
+
 ```
 !startevent <name> <startDate> <endDate> <interval>
 ```
 
 **Example:**
+
 ```
 !startevent "December Challenge" 2025-12-01 2026-01-01 2h
 ```
@@ -31,62 +33,72 @@ All commands are restricted to Guild Masters and Leaders only.
 - `interval`: Update interval (e.g., 2h, 30m, 1d)
 
 ### Stop Event
+
 ```
 !stopevent
 ```
+
 Stops the current event and generates a final report.
 
 ### Daily Report
+
 ```
 !dailyeventreport
 ```
+
 Manually trigger a daily report to Discord (also runs automatically at midnight).
 
 ### Event Status
+
 ```
 !eventstatus
 ```
+
 Show current event configuration and status.
 
 ## Data Structure
 
 ### Per-Player Daily Stats
+
 `data/event/{trimmed-uuid}/day{n}.json`
+
 ```json
 {
-  "uuid": "player-uuid",
-  "username": "PlayerName",
-  "timestamp": 1234567890,
-  "gexp": {
-    "weekly": 100000,
-    "daily": 15000
-  },
-  "bedwars": {
-    "wins": 500,
-    "losses": 300,
-    "final_kills": 1200,
-    "final_deaths": 800,
-    "kills": 2500,
-    "deaths": 1800
-  },
-  "skywars": {
-    "wins": 200,
-    "losses": 150,
-    "kills": 800,
-    "deaths": 600
-  },
-  "copsandcrims": {
-    "wins": 50,
-    "kills": 300,
-    "deaths": 200,
-    "headshot_kills": 100
-  },
-  "networkLevel": 125.5
+    "uuid": "player-uuid",
+    "username": "PlayerName",
+    "timestamp": 1234567890,
+    "gexp": {
+        "weekly": 100000,
+        "daily": 15000
+    },
+    "bedwars": {
+        "wins": 500,
+        "losses": 300,
+        "final_kills": 1200,
+        "final_deaths": 800,
+        "kills": 2500,
+        "deaths": 1800
+    },
+    "skywars": {
+        "wins": 200,
+        "losses": 150,
+        "kills": 800,
+        "deaths": 600
+    },
+    "copsandcrims": {
+        "wins": 50,
+        "kills": 300,
+        "deaths": 200,
+        "headshot_kills": 100
+    },
+    "networkLevel": 125.5
 }
 ```
 
 ### Overall Summary
+
 `data/event/overall.json`
+
 ```json
 [
   {
@@ -109,6 +121,7 @@ Show current event configuration and status.
 Daily reports are automatically sent to Discord channel ID: `522861704921481229`
 
 The embed includes:
+
 - Total players tracked
 - Total GEXP gained
 - Top 5 GEXP gainers
@@ -119,6 +132,7 @@ The embed includes:
 ## Configuration
 
 The extension requires the following environment variables:
+
 - `HYPIXEL_API_KEY`: Your Hypixel API key
 - `HYPIXEL_GUILD_ID`: Your guild's Hypixel ID
 

@@ -1,2 +1,18 @@
+# Build outputs
 dist
+*.tsbuildinfo
+
+# Lock files
 pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Dependencies
+node_modules
+
+# Data files
+data/
+
+# Logs
+*.log
+npm-debug.log*

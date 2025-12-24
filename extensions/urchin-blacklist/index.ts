@@ -1,12 +1,12 @@
 /**
  * Urchin Blacklist Extension v1.0
- * 
+ *
  * Provides blacklist checking functionality using the Urchin API.
- * 
+ *
  * Commands:
  * - !view [username] - Check if a player has blacklist tags
- * 
- * @author MiscGuild Bridge Bot Team  
+ *
+ * @author MiscGuild Bridge Bot Team
  * @version 1.0.0
  */
 
@@ -18,13 +18,13 @@ class UrchinBlacklistExtension {
         name: 'Urchin Blacklist Checker v1.0',
         version: '1.0.0',
         description: 'Check player blacklist status using Urchin API',
-        author: 'MiscGuild Bridge Bot Team'
+        author: 'MiscGuild Bridge Bot Team',
     };
 
     private config: any = {};
     private botContext: any;
     private api: ExtensionAPI | null = null;
-    
+
     // Cooldown tracking
     private cooldowns: Map<string, number> = new Map();
     private processingRequests: Set<string> = new Set();
@@ -35,8 +35,8 @@ class UrchinBlacklistExtension {
         enabled: true,
         urchinApiKey: process.env.URCHIN_API_KEY || '',
         debugMode: false,
-        cooldownTime: (parseInt(process.env.COOLDOWN_URCHIN || '5')) * 1000, // Convert seconds to milliseconds
-        cleanupInterval: 5 * 60 * 1000 // Clean up old cooldowns every 5 minutes
+        cooldownTime: parseInt(process.env.COOLDOWN_URCHIN || '5') * 1000, // Convert seconds to milliseconds
+        cleanupInterval: 5 * 60 * 1000, // Clean up old cooldowns every 5 minutes
     };
 
     /**
@@ -46,22 +46,24 @@ class UrchinBlacklistExtension {
         this.config = { ...this.defaultConfig, ...api.config };
         this.botContext = context;
         this.api = api;
-        
+
         api.log.info('Initializing Urchin Blacklist Extension...');
-        
+
         if (!this.config.enabled) {
             api.log.warn('Urchin Blacklist Extension is disabled in config');
             return;
         }
 
         if (!this.config.urchinApiKey) {
-            api.log.error('Urchin API key not found! Please set URCHIN_API_KEY environment variable');
+            api.log.error(
+                'Urchin API key not found! Please set URCHIN_API_KEY environment variable'
+            );
             return;
         }
 
         // Start cooldown cleanup interval
         this.startCooldownCleanup();
-        
+
         api.log.success('Urchin Blacklist Extension initialized successfully');
     }
 
@@ -78,7 +80,7 @@ class UrchinBlacklistExtension {
             pattern: /^!view(?:\s+(.+))?$/i,
             priority: 1,
             description: 'Check player blacklist status',
-            handler: this.handleViewCommand.bind(this)
+            handler: this.handleViewCommand.bind(this),
         });
 
         return patterns;
@@ -119,7 +121,11 @@ class UrchinBlacklistExtension {
         // Check cooldown
         const cooldownRemaining = this.isOnCooldown(requester, Date.now());
         if (cooldownRemaining > 0) {
-            const message = `${requester}, you can use !view again in ${cooldownRemaining} seconds. | #${Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0')}`;
+            const message = `${requester}, you can use !view again in ${cooldownRemaining} seconds. | #${Math.floor(
+                Math.random() * 0xffffff
+            )
+                .toString(16)
+                .padStart(6, '0')}`;
             this.sendToChannel(context, api, message);
             return;
         }
@@ -134,15 +140,22 @@ class UrchinBlacklistExtension {
             // Step 1: Convert username to UUID using Mojang API
             let uuid: string;
             try {
-                const uuidResponse = await fetch(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(target)}`, {
-                    headers: {
-                        'User-Agent': 'MiscellaneousBridge/2.6 (info@vliegenier04.dev)',
-                        Accept: 'application/json',
-                    },
-                });
+                const uuidResponse = await fetch(
+                    `https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(target)}`,
+                    {
+                        headers: {
+                            'User-Agent': 'MiscellaneousBridge/2.6 (info@vliegenier04.dev)',
+                            Accept: 'application/json',
+                        },
+                    }
+                );
 
                 if (uuidResponse.status === 204 || uuidResponse.status === 404) {
-                    this.sendToChannel(context, api, `[NOT-TAGGED] ${target} is not a valid Minecraft username. | #${this.getRandomHexColor()}`);
+                    this.sendToChannel(
+                        context,
+                        api,
+                        `[NOT-TAGGED] ${target} is not a valid Minecraft username. | #${this.getRandomHexColor()}`
+                    );
                     return;
                 }
 
@@ -154,13 +167,17 @@ class UrchinBlacklistExtension {
                 uuid = uuidData.id; // UUID without hyphens
             } catch (error) {
                 api.log.error(`Error fetching UUID for ${target}:`, error);
-                this.sendToChannel(context, api, `[ERROR] Failed to lookup ${target}. Please try again later. | #${this.getRandomHexColor()}`);
+                this.sendToChannel(
+                    context,
+                    api,
+                    `[ERROR] Failed to lookup ${target}. Please try again later. | #${this.getRandomHexColor()}`
+                );
                 return;
             }
 
             // Step 2: Query Urchin API for blacklist tags
             const urchinUrl = `https://urchin.ws/player/${uuid}?key=${this.config.urchinApiKey}&sources=GAME,MANUAL,CHAT,ME,PARTY`;
-            
+
             try {
                 const urchinResponse = await fetch(urchinUrl, {
                     headers: {
@@ -170,18 +187,30 @@ class UrchinBlacklistExtension {
                 });
 
                 if (urchinResponse.status === 404) {
-                    this.sendToChannel(context, api, `[NOT-TAGGED] ${target} has no tags in the blacklist. | #${this.getRandomHexColor()}`);
+                    this.sendToChannel(
+                        context,
+                        api,
+                        `[NOT-TAGGED] ${target} has no tags in the blacklist. | #${this.getRandomHexColor()}`
+                    );
                     return;
                 }
 
                 if (urchinResponse.status === 401) {
                     api.log.error('Invalid Urchin API key');
-                    this.sendToChannel(context, api, `[ERROR] API authentication failed. Please contact an administrator. | #${this.getRandomHexColor()}`);
+                    this.sendToChannel(
+                        context,
+                        api,
+                        `[ERROR] API authentication failed. Please contact an administrator. | #${this.getRandomHexColor()}`
+                    );
                     return;
                 }
 
                 if (urchinResponse.status === 429) {
-                    this.sendToChannel(context, api, `[ERROR] Rate limit exceeded. Please try again later. | #${this.getRandomHexColor()}`);
+                    this.sendToChannel(
+                        context,
+                        api,
+                        `[ERROR] Rate limit exceeded. Please try again later. | #${this.getRandomHexColor()}`
+                    );
                     return;
                 }
 
@@ -193,7 +222,11 @@ class UrchinBlacklistExtension {
 
                 // Step 3: Process and display tags
                 if (!urchinData || !urchinData.tags || urchinData.tags.length === 0) {
-                    this.sendToChannel(context, api, `[NOT-TAGGED] ${target} has no tags in the blacklist. | #${this.getRandomHexColor()}`);
+                    this.sendToChannel(
+                        context,
+                        api,
+                        `[NOT-TAGGED] ${target} has no tags in the blacklist. | #${this.getRandomHexColor()}`
+                    );
                     return;
                 }
 
@@ -201,19 +234,31 @@ class UrchinBlacklistExtension {
                 for (const tag of urchinData.tags) {
                     const tagType = (tag.type || 'UNKNOWN').toUpperCase().replace(/ /g, '-');
                     const reason = tag.reason || 'No reason given';
-                    this.sendToChannel(context, api, `[${tagType}] ${target} - ${reason} | #${this.getRandomHexColor()}`);
+                    this.sendToChannel(
+                        context,
+                        api,
+                        `[${tagType}] ${target} - ${reason} | #${this.getRandomHexColor()}`
+                    );
                 }
 
-                api.log.success(`Sent blacklist info for ${target} (${urchinData.tags.length} tags found)`);
-
+                api.log.success(
+                    `Sent blacklist info for ${target} (${urchinData.tags.length} tags found)`
+                );
             } catch (error) {
                 api.log.error(`Error querying Urchin API for ${target}:`, error);
-                this.sendToChannel(context, api, `[ERROR] Failed to check blacklist for ${target}. Please try again later. | #${this.getRandomHexColor()}`);
+                this.sendToChannel(
+                    context,
+                    api,
+                    `[ERROR] Failed to check blacklist for ${target}. Please try again later. | #${this.getRandomHexColor()}`
+                );
             }
-
         } catch (error) {
             api.log.error(`Unexpected error in !view command:`, error);
-            this.sendToChannel(context, api, `[ERROR] An unexpected error occurred. Please try again later. | #${this.getRandomHexColor()}`);
+            this.sendToChannel(
+                context,
+                api,
+                `[ERROR] An unexpected error occurred. Please try again later. | #${this.getRandomHexColor()}`
+            );
         } finally {
             // Always cleanup the processing flag
             this.processingRequests.delete(requestKey);
@@ -263,7 +308,9 @@ class UrchinBlacklistExtension {
      * Generate random hex color
      */
     private getRandomHexColor(): string {
-        return Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+        return Math.floor(Math.random() * 0xffffff)
+            .toString(16)
+            .padStart(6, '0');
     }
 
     /**
@@ -276,7 +323,7 @@ class UrchinBlacklistExtension {
         }
         this.cooldowns.clear();
         this.processingRequests.clear();
-        
+
         if (this.api) {
             this.api.log.info('Urchin Blacklist Extension cleaned up');
         }

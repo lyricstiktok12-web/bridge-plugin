@@ -21,11 +21,10 @@ export const uhcHandler: StatsHandler = {
         const deaths = stats.deaths ?? 0;
         const score = stats.score ?? 0;
         const headsEaten = stats.heads_eaten ?? 0;
-        const ultimatesCrafted = stats.ultimates_crafted ?? 0;
 
         // Calculate ratios
         const kdr = calculateRatio(kills, deaths);
 
         return `[UHC] IGN: ${playerName} | WINS: ${wins} (S:${soloWins} T:${teamWins}) | KDR: ${kdr} | KILLS: ${formatNumber(kills)} | SCORE: ${formatNumber(score)} | HEADS: ${headsEaten} | ${getRandomHexColor()}`;
-    }
+    },
 };

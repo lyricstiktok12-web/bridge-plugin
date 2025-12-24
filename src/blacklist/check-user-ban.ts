@@ -16,18 +16,18 @@ export function checkUserBan(uuid: string): BanCheckResult {
         const banListPath = path.join(process.cwd(), 'data', 'staff-bans.json');
         const banListData = fs.readFileSync(banListPath, 'utf8');
         const banList = JSON.parse(banListData);
-        
+
         const ban = banList.bans?.find((entry: any) => entry.uuid === uuid);
-        
+
         if (!ban) {
             return { isBanned: false };
         }
-        
+
         return {
             isBanned: true,
             banType: ban.type,
             reason: ban.reason,
-            endDate: ban.endDate
+            endDate: ban.endDate,
         };
     } catch (error) {
         console.error('Error reading ban list:', error);
@@ -44,20 +44,20 @@ export async function checkUserBanByUsername(username: string): Promise<BanCheck
         const banListPath = path.join(process.cwd(), 'data', 'staff-bans.json');
         const banListData = fs.readFileSync(banListPath, 'utf8');
         const banList = JSON.parse(banListData);
-        
-        const ban = banList.bans?.find((entry: any) => 
-            entry.name.toLowerCase() === username.toLowerCase()
+
+        const ban = banList.bans?.find(
+            (entry: any) => entry.name.toLowerCase() === username.toLowerCase()
         );
-        
+
         if (!ban) {
             return { isBanned: false };
         }
-        
+
         return {
             isBanned: true,
             banType: ban.type,
             reason: ban.reason,
-            endDate: ban.endDate
+            endDate: ban.endDate,
         };
     } catch (error) {
         console.error('Error reading ban list:', error);
@@ -89,20 +89,20 @@ function checkUserBanByUsernameSync(username: string): BanCheckResult {
         const banListPath = path.join(process.cwd(), 'data', 'staff-bans.json');
         const banListData = fs.readFileSync(banListPath, 'utf8');
         const banList = JSON.parse(banListData);
-        
-        const ban = banList.bans?.find((entry: any) => 
-            entry.name.toLowerCase() === username.toLowerCase()
+
+        const ban = banList.bans?.find(
+            (entry: any) => entry.name.toLowerCase() === username.toLowerCase()
         );
-        
+
         if (!ban) {
             return { isBanned: false };
         }
-        
+
         return {
             isBanned: true,
             banType: ban.type,
             reason: ban.reason,
-            endDate: ban.endDate
+            endDate: ban.endDate,
         };
     } catch (error) {
         console.error('Error reading ban list:', error);

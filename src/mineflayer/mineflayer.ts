@@ -43,7 +43,10 @@ export default class Mineflayer {
         setTimeout(() => this.connect(), 1000 * env.MINECRAFT_RECONNECT_DELAY);
     }
 
-    public async execute(message: string, catchErrors: boolean = false): Promise<undefined | string> {
+    public async execute(
+        message: string,
+        catchErrors: boolean = false
+    ): Promise<undefined | string> {
         if (catchErrors) {
             return this.executeCommand(message);
         } else {
@@ -73,10 +76,17 @@ export default class Mineflayer {
         let listener: ((jsonMsg: any, position: string) => void) | undefined;
 
         return new Promise<string | undefined>((resolve, reject) => {
-            listener = (jsonMsg: any, position: string) => {
+            listener = (jsonMsg: any, _position: string) => {
                 // Extract plain text from ChatMessage object
-                const str = typeof jsonMsg === 'string' ? jsonMsg : (jsonMsg?.toString ? jsonMsg.toString() : '');
-                const matches = str.match(/^\s*(\[.*\])?\s*You cannot say the same message twice!|.*(?:missing permissions?|not allowed|can't use|cannot use|usage:|>(?:.*?)Guild >.*?)\s*(\[.*\])?.*?: §c(.+)$/);
+                const str =
+                    typeof jsonMsg === 'string'
+                        ? jsonMsg
+                        : jsonMsg?.toString
+                          ? jsonMsg.toString()
+                          : '';
+                const matches = str.match(
+                    /^\s*(\[.*\])?\s*You cannot say the same message twice!|.*(?:missing permissions?|not allowed|can't use|cannot use|usage:|>(?:.*?)Guild >.*?)\s*(\[.*\])?.*?: §c(.+)$/
+                );
 
                 if (matches?.length && !str.toLowerCase().includes('limbo')) {
                     reject(typeof str === 'string' ? str : undefined);
@@ -98,11 +108,11 @@ export default class Mineflayer {
 
     public async loadEvents(bridge: Bridge) {
         this.bot.setMaxListeners(25);
-        
+
         // Load core events first
         await loadEvents(path.join(__dirname, 'events/chat'), this.bot, bridge);
         await loadEvents(path.join(__dirname, 'events/handler'), this.bot, bridge);
-        
+
         // Register extension chat patterns with message listener
         consola.info('Registering extension chat patterns...');
         this.registerExtensionPatterns(bridge);
@@ -112,13 +122,13 @@ export default class Mineflayer {
     private registerExtensionPatterns(bridge: Bridge) {
         // Get all chat patterns from the extension manager
         const chatPatterns = bridge.extensionManager.getAllChatPatterns();
-        
+
         consola.info(`Registering ${chatPatterns.length} extension chat patterns`);
-        
+
         // Note: The Extension Manager already has its own central chat listener
         // in setupCentralChatListener(), so we don't need to add another one here
         // to avoid duplicate message processing.
-        
+
         consola.debug('Extension Manager is handling chat message routing');
     }
 
@@ -142,7 +152,7 @@ export default class Mineflayer {
             'chat:sameMessageTwice',
             'chat:whisper',
         ];
-        
+
         return corePatterns.includes(eventName);
     }
 
@@ -154,7 +164,7 @@ export default class Mineflayer {
 
         consola.info('Attempting to reconnect...');
         this.reconnecting = true;
-        
+
         // Close current connection
         if (this.bot) {
             this.bot.end();
@@ -166,6 +176,4 @@ export default class Mineflayer {
             this.loadEvents(bridge);
         }, 5000);
     }
-
-
 }

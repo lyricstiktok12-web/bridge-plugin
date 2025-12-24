@@ -61,22 +61,37 @@ class HypixelStatsExtension {
     private cache: Map<string, CacheEntry> = new Map();
     private cacheCleanupInterval: NodeJS.Timeout | null = null;
 
+    // Helper to build cooldowns from environment
+    private buildGuildRankCooldowns(): Record<string, number> {
+        const cooldowns: Record<string, number> = {};
+        
+        // Use environment variable rank names
+        if (process.env.RANK_1) cooldowns[process.env.RANK_1] = parseInt(process.env.COOLDOWN_RANK_1!);
+        if (process.env.RANK_2) cooldowns[process.env.RANK_2] = parseInt(process.env.COOLDOWN_RANK_2!);
+        if (process.env.RANK_3) cooldowns[process.env.RANK_3] = parseInt(process.env.COOLDOWN_RANK_3!);
+        if (process.env.RANK_4) cooldowns[process.env.RANK_4] = parseInt(process.env.COOLDOWN_RANK_4!);
+        if (process.env.RANK_5) cooldowns[process.env.RANK_5] = parseInt(process.env.COOLDOWN_RANK_5!);
+        if (process.env.RANK_LEADER) cooldowns[process.env.RANK_LEADER] = parseInt(process.env.COOLDOWN_LEADER!);
+        
+        // Add common variations
+        cooldowns['GM'] = parseInt(process.env.COOLDOWN_LEADER!);
+        cooldowns['Moderator'] = parseInt(process.env.COOLDOWN_RANK_2!);
+        
+        return cooldowns;
+    }
+
     // Default configuration
-    private defaultConfig = {
-        enabled: true,
-        hypixelApiKey: process.env.HYPIXEL_API_KEY,
-        debugMode: false,
-        cleanupInterval: 5 * 60 * 1000, // Clean up old cooldowns every 5 minutes
-        cacheExpiryTime: 15 * 60 * 1000, // Cache expires after 15 minutes
-        cacheCleanupInterval: 5 * 60 * 1000, // Clean up expired cache entries every 5 minutes
-        guildRankCooldowns: {
-            'Guild Master': 0,      // No cooldown for Guild Master
-            'Leader': 0,          // 0 seconds for Leaders
-            'Officer': 0,       // 0 seconds for Moderators
-            'Elite': 0,          // 0 seconds for Elites (ELITE+ bypass)
-            'Member': 45           // 45 seconds for Members
-        }
-    };
+    private get defaultConfig() {
+        return {
+            enabled: true,
+            hypixelApiKey: process.env.HYPIXEL_API_KEY,
+            debugMode: false,
+            cleanupInterval: 5 * 60 * 1000, // Clean up old cooldowns every 5 minutes
+            cacheExpiryTime: 15 * 60 * 1000, // Cache expires after 15 minutes
+            cacheCleanupInterval: 5 * 60 * 1000, // Clean up expired cache entries every 5 minutes
+            guildRankCooldowns: this.buildGuildRankCooldowns()
+        };
+    }
 
     /**
      * Initialize the extension

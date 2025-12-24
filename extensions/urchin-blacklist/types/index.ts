@@ -20,6 +20,7 @@ export interface ExtensionAPI {
     config: any;
     chat: {
         sendGuildChat: (message: string) => void;
+        sendOfficerChat: (message: string) => void;
         sendPrivateMessage: (username: string, message: string) => void;
         sendPartyMessage: (message: string) => void;
     };

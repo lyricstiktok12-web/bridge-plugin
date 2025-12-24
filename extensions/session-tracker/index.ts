@@ -115,14 +115,24 @@ class SessionTrackerExtension {
     private activeSessions: Map<string, SessionData> = new Map();
     private sessionHistory: CompletedSession[] = [];
     
+    // Profile caching to avoid rate limiting
+    private profileCache: Map<string, { profile: MojangProfile; timestamp: number }> = new Map();
+    private playerDataCache: Map<string, { data: any; timestamp: number }> = new Map();
+    
     private activeSessionsFile = './data/active-sessions.json';
     private sessionHistoryFile = './data/session-history.json';
+    
+    private autoSaveInterval: NodeJS.Timeout | null = null;
+    private cacheCleanupInterval: NodeJS.Timeout | null = null;
 
     private defaultConfig = {
         enabled: true,
         hypixelApiKey: process.env.HYPIXEL_API_KEY || '',
         supportedGames: ['bw', 'sw', 'cvc'],
         cacheExpiryTime: 15 * 60 * 1000, // 15 minutes
+        profileCacheTTL: 5 * 60 * 1000, // 5 minutes for profile cache
+        playerDataCacheTTL: 2 * 60 * 1000, // 2 minutes for player data cache
+        autoSaveInterval: 5 * 60 * 1000, // Auto-save every 5 minutes
         maxHistoryPerUser: 50 // Maximum number of sessions to keep per user
     };
 
@@ -145,6 +155,20 @@ class SessionTrackerExtension {
         // Load active sessions and history from disk
         await this.loadActiveSessions();
         await this.loadSessionHistory();
+
+        // Resume active sessions if any
+        if (this.activeSessions.size > 0) {
+            api.log.info(`Resuming ${this.activeSessions.size} active session(s) from before reboot`);
+            for (const [key, session] of this.activeSessions.entries()) {
+                api.log.info(`  - ${session.username} (${session.game.toUpperCase()}) - Started ${this.formatDuration(Date.now() - session.startTime)} ago`);
+            }
+        }
+
+        // Start periodic auto-save
+        this.startAutoSave();
+        
+        // Start cache cleanup
+        this.startCacheCleanup();
 
         api.log.info(`Loaded ${this.activeSessions.size} active session(s) and ${this.sessionHistory.length} historical session(s)`);
         api.log.success('Session Tracker Extension initialized successfully');
@@ -283,7 +307,7 @@ class SessionTrackerExtension {
 
         try {
             // Fetch player UUID first
-            const mojangProfile = await this.fetchMojangProfile(username);
+            const mojangProfile = await this.fetchMojangProfileCached(username);
             if (this.isFetchError(mojangProfile)) {
                 const message = `${username}, could not find Minecraft profile. Please check your username. | ${this.getRandomHexColor()}`;
                 this.sendToChannel(context, api, message);
@@ -297,7 +321,7 @@ class SessionTrackerExtension {
                 const oldSession = this.activeSessions.get(sessionKey)!;
                 
                 // Fetch current stats to save the old session
-                const endPlayerData = await this.fetchHypixelPlayerProfile(mojangProfile.id);
+                const endPlayerData = await this.fetchHypixelPlayerProfileCached(mojangProfile.id);
                 if (!this.isFetchError(endPlayerData)) {
                     const endStats = this.extractGameStats(game, endPlayerData.stats);
                     await this.addToHistory(oldSession, endStats);
@@ -310,7 +334,7 @@ class SessionTrackerExtension {
                 this.sendToChannel(context, api, warningMessage);
             }
 
-            const playerData = await this.fetchHypixelPlayerProfile(mojangProfile.id);
+            const playerData = await this.fetchHypixelPlayerProfileCached(mojangProfile.id);
             if (this.isFetchError(playerData)) {
                 const message = `${username}, failed to fetch Hypixel stats. Please try again later. | ${this.getRandomHexColor()}`;
                 this.sendToChannel(context, api, message);
@@ -349,7 +373,7 @@ class SessionTrackerExtension {
 
         try {
             // Fetch player UUID first
-            const mojangProfile = await this.fetchMojangProfile(username);
+            const mojangProfile = await this.fetchMojangProfileCached(username);
             if (this.isFetchError(mojangProfile)) {
                 const message = `${username}, could not fetch profile to end session. | ${this.getRandomHexColor()}`;
                 this.sendToChannel(context, api, message);
@@ -368,7 +392,7 @@ class SessionTrackerExtension {
 
             api.log.info(`${username} stopping ${game} session`);
 
-            const playerData = await this.fetchHypixelPlayerProfile(mojangProfile.id);
+            const playerData = await this.fetchHypixelPlayerProfileCached(mojangProfile.id);
             if (this.isFetchError(playerData)) {
                 const message = `${username}, failed to fetch Hypixel stats. | ${this.getRandomHexColor()}`;
                 this.sendToChannel(context, api, message);
@@ -404,7 +428,7 @@ class SessionTrackerExtension {
 
         try {
             // Fetch player UUID first
-            const mojangProfile = await this.fetchMojangProfile(username);
+            const mojangProfile = await this.fetchMojangProfileCached(username);
             if (this.isFetchError(mojangProfile)) {
                 const message = `${username}, could not fetch profile. | ${this.getRandomHexColor()}`;
                 this.sendToChannel(context, api, message);
@@ -421,7 +445,7 @@ class SessionTrackerExtension {
                 return;
             }
 
-            const playerData = await this.fetchHypixelPlayerProfile(mojangProfile.id);
+            const playerData = await this.fetchHypixelPlayerProfileCached(mojangProfile.id);
             if (this.isFetchError(playerData)) {
                 const message = `${username}, failed to fetch Hypixel stats. | ${this.getRandomHexColor()}`;
                 this.sendToChannel(context, api, message);
@@ -447,7 +471,7 @@ class SessionTrackerExtension {
         api.log.info(`${username} checking ${game} session history`);
 
         // Fetch player UUID
-        const mojangProfile = await this.fetchMojangProfile(username);
+        const mojangProfile = await this.fetchMojangProfileCached(username);
         if (this.isFetchError(mojangProfile)) {
             const message = `${username}, could not find Minecraft profile. | ${this.getRandomHexColor()}`;
             this.sendToChannel(context, api, message);
@@ -507,7 +531,7 @@ class SessionTrackerExtension {
         api.log.info(`${username} checking ${game} overall session stats`);
 
         // Fetch player UUID
-        const mojangProfile = await this.fetchMojangProfile(username);
+        const mojangProfile = await this.fetchMojangProfileCached(username);
         if (this.isFetchError(mojangProfile)) {
             const message = `${username}, could not find Minecraft profile. | ${this.getRandomHexColor()}`;
             this.sendToChannel(context, api, message);
@@ -605,7 +629,7 @@ class SessionTrackerExtension {
 
         try {
             // Fetch target user's UUID first
-            const mojangProfile = await this.fetchMojangProfile(targetUsername);
+            const mojangProfile = await this.fetchMojangProfileCached(targetUsername);
             if (this.isFetchError(mojangProfile)) {
                 const message = `${staffUsername}, could not find profile for ${targetUsername}. | ${this.getRandomHexColor()}`;
                 this.sendToChannel(context, api, message);
@@ -626,7 +650,7 @@ class SessionTrackerExtension {
                 return;
             }
 
-            const playerData = await this.fetchHypixelPlayerProfile(mojangProfile.id);
+            const playerData = await this.fetchHypixelPlayerProfileCached(mojangProfile.id);
             if (this.isFetchError(playerData)) {
                 const message = `${staffUsername}, failed to fetch Hypixel stats for ${targetUsername}. | ${this.getRandomHexColor()}`;
                 this.sendToChannel(context, api, message);
@@ -981,11 +1005,157 @@ class SessionTrackerExtension {
         return gained;
     }
 
+    /**
+     * Start periodic auto-save of active sessions
+     */
+    private startAutoSave(): void {
+        if (this.autoSaveInterval) {
+            clearInterval(this.autoSaveInterval);
+        }
+        
+        this.autoSaveInterval = setInterval(async () => {
+            if (this.activeSessions.size > 0) {
+                await this.saveActiveSessions();
+                this.api?.log.debug('Auto-saved active sessions');
+            }
+        }, this.config.autoSaveInterval);
+        
+        this.api?.log.debug(`Auto-save enabled (every ${this.config.autoSaveInterval / 1000}s)`);
+    }
+
+    /**
+     * Start cache cleanup interval
+     */
+    private startCacheCleanup(): void {
+        if (this.cacheCleanupInterval) {
+            clearInterval(this.cacheCleanupInterval);
+        }
+        
+        this.cacheCleanupInterval = setInterval(() => {
+            const now = Date.now();
+            let profilesRemoved = 0;
+            let dataRemoved = 0;
+            
+            // Clean expired profile cache
+            for (const [username, cached] of this.profileCache.entries()) {
+                if (now - cached.timestamp > this.config.profileCacheTTL) {
+                    this.profileCache.delete(username);
+                    profilesRemoved++;
+                }
+            }
+            
+            // Clean expired player data cache
+            for (const [uuid, cached] of this.playerDataCache.entries()) {
+                if (now - cached.timestamp > this.config.playerDataCacheTTL) {
+                    this.playerDataCache.delete(uuid);
+                    dataRemoved++;
+                }
+            }
+            
+            if (profilesRemoved > 0 || dataRemoved > 0) {
+                this.api?.log.debug(`Cache cleanup: removed ${profilesRemoved} profiles, ${dataRemoved} player data entries`);
+            }
+        }, 60 * 1000); // Clean every minute
+        
+        this.api?.log.debug('Cache cleanup enabled (every 60s)');
+    }
+
+    /**
+     * Fetch Mojang profile with caching
+     */
+    private async fetchMojangProfileCached(username: string): Promise<MojangProfile | FetchError> {
+        const cacheKey = username.toLowerCase();
+        const cached = this.profileCache.get(cacheKey);
+        const now = Date.now();
+        
+        // Return cached if still valid
+        if (cached && (now - cached.timestamp) < this.config.profileCacheTTL) {
+            this.api?.log.debug(`Using cached Mojang profile for ${username}`);
+            return cached.profile;
+        }
+        
+        // Fetch fresh profile
+        const profile = await this.fetchMojangProfile(username);
+        
+        // Cache if successful
+        if (!this.isFetchError(profile)) {
+            this.profileCache.set(cacheKey, {
+                profile,
+                timestamp: now
+            });
+            this.api?.log.debug(`Cached Mojang profile for ${username}`);
+        }
+        
+        return profile;
+    }
+
+    /**
+     * Fetch Hypixel player data with caching
+     */
+    private async fetchHypixelPlayerProfileCached(uuid: string): Promise<any | FetchError> {
+        const cached = this.playerDataCache.get(uuid);
+        const now = Date.now();
+        
+        // Return cached if still valid
+        if (cached && (now - cached.timestamp) < this.config.playerDataCacheTTL) {
+            this.api?.log.debug(`Using cached Hypixel data for UUID ${uuid.substring(0, 8)}...`);
+            return cached.data;
+        }
+        
+        // Fetch fresh data
+        const data = await this.fetchHypixelPlayerProfile(uuid);
+        
+        // Cache if successful
+        if (!this.isFetchError(data)) {
+            this.playerDataCache.set(uuid, {
+                data,
+                timestamp: now
+            });
+            this.api?.log.debug(`Cached Hypixel data for UUID ${uuid.substring(0, 8)}...`);
+        }
+        
+        return data;
+    }
+
+    /**
+     * Format duration in human-readable format
+     */
+    private formatDuration(milliseconds: number): string {
+        const seconds = Math.floor(milliseconds / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+        
+        if (days > 0) {
+            return `${days}d ${hours % 24}h`;
+        } else if (hours > 0) {
+            return `${hours}h ${minutes % 60}m`;
+        } else if (minutes > 0) {
+            return `${minutes}m`;
+        } else {
+            return `${seconds}s`;
+        }
+    }
+
     async cleanup(): Promise<void> {
+        // Clear intervals
+        if (this.autoSaveInterval) {
+            clearInterval(this.autoSaveInterval);
+            this.autoSaveInterval = null;
+        }
+        
+        if (this.cacheCleanupInterval) {
+            clearInterval(this.cacheCleanupInterval);
+            this.cacheCleanupInterval = null;
+        }
+        
         // Save active sessions before cleanup
         await this.saveActiveSessions();
         
         this.activeSessions.clear();
+        this.profileCache.clear();
+        this.playerDataCache.clear();
+        
         if (this.api) {
             this.api.log.info('Session Tracker Extension cleaned up');
         }

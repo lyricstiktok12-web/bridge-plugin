@@ -35,7 +35,7 @@ class UrchinBlacklistExtension {
         enabled: true,
         urchinApiKey: process.env.URCHIN_API_KEY || '',
         debugMode: false,
-        cooldownTime: 5 * 1000, // 5 seconds cooldown
+        cooldownTime: (parseInt(process.env.COOLDOWN_URCHIN || '5')) * 1000, // Convert seconds to milliseconds
         cleanupInterval: 5 * 60 * 1000 // Clean up old cooldowns every 5 minutes
     };
 
@@ -85,6 +85,22 @@ class UrchinBlacklistExtension {
     }
 
     /**
+     * Send message to correct channel based on context
+     */
+    private sendToChannel(context: ChatMessageContext, api: ExtensionAPI, message: string): void {
+        if (context.channel === 'Officer') {
+            api.chat.sendOfficerChat(message);
+        } else if (context.channel === 'Guild') {
+            api.chat.sendGuildChat(message);
+        } else if (context.channel === 'Private') {
+            api.chat.sendPrivateMessage(context.username, message);
+        } else {
+            // Default to guild chat for unknown channels
+            api.chat.sendGuildChat(message);
+        }
+    }
+
+    /**
      * Handle !view command
      */
     private async handleViewCommand(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
@@ -104,7 +120,7 @@ class UrchinBlacklistExtension {
         const cooldownRemaining = this.isOnCooldown(requester, Date.now());
         if (cooldownRemaining > 0) {
             const message = `${requester}, you can use !view again in ${cooldownRemaining} seconds. | #${Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0')}`;
-            api.chat.sendGuildChat(message);
+            this.sendToChannel(context, api, message);
             return;
         }
 
@@ -126,7 +142,7 @@ class UrchinBlacklistExtension {
                 });
 
                 if (uuidResponse.status === 204 || uuidResponse.status === 404) {
-                    api.chat.sendGuildChat(`[NOT-TAGGED] ${target} is not a valid Minecraft username. | #${this.getRandomHexColor()}`);
+                    this.sendToChannel(context, api, `[NOT-TAGGED] ${target} is not a valid Minecraft username. | #${this.getRandomHexColor()}`);
                     return;
                 }
 
@@ -138,7 +154,7 @@ class UrchinBlacklistExtension {
                 uuid = uuidData.id; // UUID without hyphens
             } catch (error) {
                 api.log.error(`Error fetching UUID for ${target}:`, error);
-                api.chat.sendGuildChat(`[ERROR] Failed to lookup ${target}. Please try again later. | #${this.getRandomHexColor()}`);
+                this.sendToChannel(context, api, `[ERROR] Failed to lookup ${target}. Please try again later. | #${this.getRandomHexColor()}`);
                 return;
             }
 
@@ -154,18 +170,18 @@ class UrchinBlacklistExtension {
                 });
 
                 if (urchinResponse.status === 404) {
-                    api.chat.sendGuildChat(`[NOT-TAGGED] ${target} has no tags in the blacklist. | #${this.getRandomHexColor()}`);
+                    this.sendToChannel(context, api, `[NOT-TAGGED] ${target} has no tags in the blacklist. | #${this.getRandomHexColor()}`);
                     return;
                 }
 
                 if (urchinResponse.status === 401) {
                     api.log.error('Invalid Urchin API key');
-                    api.chat.sendGuildChat(`[ERROR] API authentication failed. Please contact an administrator. | #${this.getRandomHexColor()}`);
+                    this.sendToChannel(context, api, `[ERROR] API authentication failed. Please contact an administrator. | #${this.getRandomHexColor()}`);
                     return;
                 }
 
                 if (urchinResponse.status === 429) {
-                    api.chat.sendGuildChat(`[ERROR] Rate limit exceeded. Please try again later. | #${this.getRandomHexColor()}`);
+                    this.sendToChannel(context, api, `[ERROR] Rate limit exceeded. Please try again later. | #${this.getRandomHexColor()}`);
                     return;
                 }
 
@@ -177,7 +193,7 @@ class UrchinBlacklistExtension {
 
                 // Step 3: Process and display tags
                 if (!urchinData || !urchinData.tags || urchinData.tags.length === 0) {
-                    api.chat.sendGuildChat(`[NOT-TAGGED] ${target} has no tags in the blacklist. | #${this.getRandomHexColor()}`);
+                    this.sendToChannel(context, api, `[NOT-TAGGED] ${target} has no tags in the blacklist. | #${this.getRandomHexColor()}`);
                     return;
                 }
 
@@ -185,19 +201,19 @@ class UrchinBlacklistExtension {
                 for (const tag of urchinData.tags) {
                     const tagType = (tag.type || 'UNKNOWN').toUpperCase().replace(/ /g, '-');
                     const reason = tag.reason || 'No reason given';
-                    api.chat.sendGuildChat(`[${tagType}] ${target} - ${reason} | #${this.getRandomHexColor()}`);
+                    this.sendToChannel(context, api, `[${tagType}] ${target} - ${reason} | #${this.getRandomHexColor()}`);
                 }
 
                 api.log.success(`Sent blacklist info for ${target} (${urchinData.tags.length} tags found)`);
 
             } catch (error) {
                 api.log.error(`Error querying Urchin API for ${target}:`, error);
-                api.chat.sendGuildChat(`[ERROR] Failed to check blacklist for ${target}. Please try again later. | #${this.getRandomHexColor()}`);
+                this.sendToChannel(context, api, `[ERROR] Failed to check blacklist for ${target}. Please try again later. | #${this.getRandomHexColor()}`);
             }
 
         } catch (error) {
             api.log.error(`Unexpected error in !view command:`, error);
-            api.chat.sendGuildChat(`[ERROR] An unexpected error occurred. Please try again later. | #${this.getRandomHexColor()}`);
+            this.sendToChannel(context, api, `[ERROR] An unexpected error occurred. Please try again later. | #${this.getRandomHexColor()}`);
         } finally {
             // Always cleanup the processing flag
             this.processingRequests.delete(requestKey);

@@ -29,6 +29,7 @@ interface ExtensionAPI {
     config: any;
     chat: {
         sendGuildChat: (message: string) => void;
+        sendOfficerChat: (message: string) => void;
         sendPrivateMessage: (username: string, message: string) => void;
         sendPartyMessage: (message: string) => void;
     };
@@ -58,6 +59,9 @@ class DuplicateMessageHandlerExtension {
     };
 
     private config: any = {};
+    private lastCommandUser: string | null = null;
+    private lastCommandChannel: 'Guild' | 'Officer' | 'From' | null = null;
+    private api: ExtensionAPI | null = null;
 
     // Default configuration
     private defaultConfig = {
@@ -77,6 +81,7 @@ class DuplicateMessageHandlerExtension {
     };
 
     async init(context: any, api: ExtensionAPI): Promise<void> {
+        this.api = api;
         api.log.info(`Initializing ${this.manifest.name}...`);
         
         // Workaround: Load config directly if not provided by extension system
@@ -136,6 +141,30 @@ class DuplicateMessageHandlerExtension {
     getChatPatterns(): ChatPattern[] {
         return [
             {
+                id: 'track-guild-commands',
+                extensionId: 'duplicate-message-handler',
+                pattern: /^Guild > (?:\[[^\]]+\]\s+)?([A-Za-z0-9_]{3,16})(?:\s+\[[^\]]+\])?:\s*(!.+)$/,
+                priority: 1000, // Very low priority so it doesn't interfere with other handlers
+                description: 'Track who made the last command in guild chat',
+                handler: (context, api) => this.trackCommandUser(context, api, 'Guild')
+            },
+            {
+                id: 'track-officer-commands',
+                extensionId: 'duplicate-message-handler',
+                pattern: /^Officer > (?:\[[^\]]+\]\s+)?([A-Za-z0-9_]{3,16})(?:\s+\[[^\]]+\])?:\s*(!.+)$/,
+                priority: 1000, // Very low priority so it doesn't interfere with other handlers
+                description: 'Track who made the last command in officer chat',
+                handler: (context, api) => this.trackCommandUser(context, api, 'Officer')
+            },
+            {
+                id: 'track-dm-commands',
+                extensionId: 'duplicate-message-handler',
+                pattern: /^From (?:\[[^\]]+\]\s+)?([A-Za-z0-9_]{3,16})(?:\s+\[[^\]]+\])?:\s*(!.+)$/,
+                priority: 1000, // Very low priority so it doesn't interfere with other handlers
+                description: 'Track who made the last command in DM',
+                handler: (context, api) => this.trackCommandUser(context, api, 'From')
+            },
+            {
                 id: 'duplicate-message-error',
                 extensionId: 'duplicate-message-handler',
                 pattern: /^You cannot say the same message twice!$/,
@@ -144,6 +173,20 @@ class DuplicateMessageHandlerExtension {
                 handler: this.handleDuplicateMessage.bind(this)
             }
         ];
+    }
+
+    /**
+     * Track which user made the last command and which channel it was in
+     */
+    private async trackCommandUser(context: ChatMessageContext, api: ExtensionAPI, channel: 'Guild' | 'Officer' | 'From'): Promise<void> {
+        if (!this.config.enabled) return;
+        
+        // Extract username from the match
+        if (context.matches && context.matches[1]) {
+            this.lastCommandUser = context.matches[1];
+            this.lastCommandChannel = channel;
+            api.log.debug(`${this.manifest.name}: Tracked command from ${this.lastCommandUser} in ${channel} chat`);
+        }
     }
 
     /**
@@ -159,10 +202,21 @@ class DuplicateMessageHandlerExtension {
         const hexColor = this.getRandomHexColor();
         const message = `${randomResponse} | ${hexColor}`;
 
-        // Send the alternative response to guild chat
-        api.chat.sendGuildChat(message);
-
-        api.log.info(`${this.manifest.name}: Sent alternative duplicate message response`);
+        // Send the response to the same channel where the command was sent
+        if (this.lastCommandChannel === 'Guild') {
+            api.chat.sendGuildChat(message);
+            api.log.info(`${this.manifest.name}: Sent alternative response to Guild chat`);
+        } else if (this.lastCommandChannel === 'Officer') {
+            api.chat.sendOfficerChat(message);
+            api.log.info(`${this.manifest.name}: Sent alternative response to Officer chat`);
+        } else if (this.lastCommandChannel === 'From' && this.lastCommandUser) {
+            api.chat.sendPrivateMessage(this.lastCommandUser, message);
+            api.log.info(`${this.manifest.name}: Sent alternative response to ${this.lastCommandUser} via DM`);
+        } else {
+            // Fallback to guild chat if we don't know the channel
+            api.chat.sendGuildChat(message);
+            api.log.warn(`${this.manifest.name}: Unknown channel, sent to Guild chat as fallback`);
+        }
     }
 
     /**

@@ -159,7 +159,7 @@ class StaffManagementExtension {
         banFile: 'staff-bans.json',
         dailyReports: true,
         reportChannel: 'oc', // Officer channel
-        debugMode: false
+        debugMode: true
     };
 
     // Staff ranks that can access analytics
@@ -377,7 +377,7 @@ class StaffManagementExtension {
             {
                 id: 'analytics-member-join-leave',
                 extensionId: 'staff-management',
-                pattern: /(?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+(joined|left)\s+the\s+guild!?$/i,
+                pattern: /^(\[.*])?\s*(\w{2,17}).*? (joined|left) the guild!$/,
                 priority: 1,
                 description: 'Logs member joins and leaves for analytics',
                 handler: this.handleMemberJoinLeaveLog.bind(this)
@@ -385,7 +385,7 @@ class StaffManagementExtension {
             {
                 id: 'analytics-member-kick',
                 extensionId: 'staff-management',
-                pattern: /(?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+was\s+kicked\s+from\s+the\s+guild\s+by\s+(?:\[.*?\]\s*)?(\w{2,17})/i,
+                pattern: /^(\[.*])?\s*(\w{2,17}).*? was kicked from the guild by (\[.*])?\s*(\w{2,17}).*?!$/,
                 priority: 1,
                 description: 'Logs member kicks for analytics',
                 handler: this.handleMemberKickLog.bind(this)
@@ -393,7 +393,7 @@ class StaffManagementExtension {
             {
                 id: 'analytics-promote-demote',
                 extensionId: 'staff-management',
-                pattern: /(?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+was\s+(promoted|demoted)\s+from\s+(.+?)\s+to\s+(.+?)$/i,
+                pattern: /^(\[.*])?\s*(\w{2,17}).*? was (promoted|demoted) from (.*) to (.*)$/,
                 priority: 1,
                 description: 'Logs promotions and demotions for analytics',
                 handler: this.handlePromoteDemoteLog.bind(this)
@@ -401,7 +401,7 @@ class StaffManagementExtension {
             {
                 id: 'analytics-guild-level-up',
                 extensionId: 'staff-management',
-                pattern: /The\s+Guild\s+has\s+reached\s+Level\s+(\d+)!?$/i,
+                pattern: /^\s{19}The Guild has reached Level (\d*)!$/,
                 priority: 1,
                 description: 'Logs guild level ups for analytics',
                 handler: this.handleGuildLevelUpLog.bind(this)
@@ -409,7 +409,7 @@ class StaffManagementExtension {
             {
                 id: 'analytics-quest-complete',
                 extensionId: 'staff-management',
-                pattern: /GUILD\s+QUEST\s+COMPLETED!?$/i,
+                pattern: /^\s{17}GUILD QUEST COMPLETED!$/,
                 priority: 1,
                 description: 'Logs quest completions for analytics',
                 handler: this.handleQuestCompleteLog.bind(this)
@@ -417,7 +417,7 @@ class StaffManagementExtension {
             {
                 id: 'analytics-quest-tier-complete',
                 extensionId: 'staff-management',
-                pattern: /GUILD\s+QUEST\s+TIER\s+(\d+)\s+COMPLETED!?$/i,
+                pattern: /^\s{17}GUILD QUEST TIER (\d*) COMPLETED!$/,
                 priority: 1,
                 description: 'Logs quest tier completions for analytics',
                 handler: this.handleQuestTierCompleteLog.bind(this)
@@ -893,11 +893,16 @@ class StaffManagementExtension {
                     // Remove from main blacklist file
                     const blacklistPath = path.join(process.cwd(), 'src', 'blacklist', '_blacklist.json');
                     const blacklistData = await fs.readFile(blacklistPath, 'utf8');
-                    const blacklist = JSON.parse(blacklistData);
+                    const data = JSON.parse(blacklistData);
+                    
+                    // Handle both old array format and new object format
+                    const blacklist = Array.isArray(data) ? data : (data.bans || []);
                     const index = blacklist.findIndex((entry: any) => entry.uuid === ban.uuid);
+                    
                     if (index !== -1) {
                         blacklist.splice(index, 1);
-                        await fs.writeFile(blacklistPath, JSON.stringify(blacklist, null, 2));
+                        // Write in new format
+                        await fs.writeFile(blacklistPath, JSON.stringify({ bans: blacklist }, null, 2));
                     }
                 } catch (error) {
                     this.api?.log.error(`Failed to remove expired ban from blacklist: ${ban.name}`, error);
@@ -997,7 +1002,10 @@ class StaffManagementExtension {
         const blacklistPath = path.join(process.cwd(), 'src', 'blacklist', '_blacklist.json');
         try {
             const blacklistData = await fs.readFile(blacklistPath, 'utf8');
-            const blacklist = JSON.parse(blacklistData);
+            const data = JSON.parse(blacklistData);
+            
+            // Handle both old array format and new object format
+            const blacklist = Array.isArray(data) ? data : (data.bans || []);
             
             if (!blacklist.some((entry: any) => entry.uuid === mojangProfile.uuid)) {
                 blacklist.push({
@@ -1005,9 +1013,13 @@ class StaffManagementExtension {
                     uuid: mojangProfile.uuid,
                     endDate,
                     reason,
-                    messageId
+                    messageId,
+                    bannedBy: context.username,
+                    bannedAt: new Date().toISOString(),
+                    type: 'guild'
                 });
-                await fs.writeFile(blacklistPath, JSON.stringify(blacklist, null, 2));
+                // Write in new format
+                await fs.writeFile(blacklistPath, JSON.stringify({ bans: blacklist }, null, 2));
             }
         } catch (error) {
             api.log.error('Failed to update blacklist:', error);
@@ -1164,14 +1176,18 @@ class StaffManagementExtension {
             const blacklistPath = path.join(process.cwd(), 'src', 'blacklist', '_blacklist.json');
             try {
                 const blacklistData = await fs.readFile(blacklistPath, 'utf8');
-                const blacklist = JSON.parse(blacklistData);
+                const data = JSON.parse(blacklistData);
+                
+                // Handle both old array format and new object format
+                const blacklist = Array.isArray(data) ? data : (data.bans || []);
                 
                 const blacklistIndex = blacklist.findIndex(
                     (entry: any) => entry.uuid === ban.uuid
                 );
                 if (blacklistIndex !== -1) {
                     blacklist.splice(blacklistIndex, 1);
-                    await fs.writeFile(blacklistPath, JSON.stringify(blacklist, null, 2));
+                    // Write in new format
+                    await fs.writeFile(blacklistPath, JSON.stringify({ bans: blacklist }, null, 2));
                 }
             } catch (error) {
                 api.log.error('Failed to update blacklist:', error);
@@ -1319,8 +1335,9 @@ class StaffManagementExtension {
     private async handleMemberJoinLeaveLog(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
         if (!this.config.enabled) return;
         
-        // Use the regex pattern match: (?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+(joined|left)\s+the\s+guild!?$
-        const match = context.raw.match(/(?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+(joined|left)\s+the\s+guild!?$/i);
+        // Pattern: [VIP+] username joined the guild! or [VIP+] username left the guild!
+        // Core pattern: /^(\[.*])?\s*(\w{2,17}).*? (joined|left) the guild!$/
+        const match = context.raw.match(/^(\[.*])?\s*(\w{2,17}).*? (joined|left) the guild!$/);
         if (!match) {
             if (this.config.debugMode) {
                 api.log.warn(`Join/Leave pattern didn't match: "${context.raw}"`);
@@ -1328,8 +1345,8 @@ class StaffManagementExtension {
             return;
         }
         
-        const playerName = match[1];  // First capture group is the username
-        const action = match[2];      // Second capture group is 'joined' or 'left'
+        const playerName = match[2];  // Second capture group is the username
+        const action = match[3];      // Third capture group is 'joined' or 'left'
         
         if (action.toLowerCase() === 'joined') {
             await this.logEvent('join', playerName);
@@ -1353,8 +1370,9 @@ class StaffManagementExtension {
     private async handleMemberKickLog(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
         if (!this.config.enabled) return;
         
-        // Use the regex pattern match: (?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+was\s+kicked\s+from\s+the\s+guild\s+by\s+(?:\[.*?\]\s*)?(\w{2,17})
-        const match = context.raw.match(/(?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+was\s+kicked\s+from\s+the\s+guild\s+by\s+(?:\[.*?\]\s*)?(\w{2,17})/i);
+        // Pattern: [VIP+] woulvii was kicked from the guild by [MVP++] Vliegenier04!
+        // Core pattern: /^(\[.*])?\s*(\w{2,17}).*? was kicked from the guild by (\[.*])?\s*(\w{2,17}).*?!$/
+        const match = context.raw.match(/^(\[.*])?\s*(\w{2,17}).*? was kicked from the guild by (\[.*])?\s*(\w{2,17}).*?!$/);
         if (!match) {
             if (this.config.debugMode) {
                 api.log.warn(`Kick pattern didn't match: "${context.raw}"`);
@@ -1362,8 +1380,8 @@ class StaffManagementExtension {
             return;
         }
         
-        const playerName = match[1];   // First capture group is the kicked player
-        const kickerName = match[2];   // Second capture group is the kicker
+        const playerName = match[2];   // Second capture group is the kicked player
+        const kickerName = match[4];   // Fourth capture group is the kicker
         await this.logEvent('kick', playerName);
         api.log.info(`Logged guild kick: ${playerName} (kicked by ${kickerName})`);
     }
@@ -1371,8 +1389,9 @@ class StaffManagementExtension {
     private async handlePromoteDemoteLog(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
         if (!this.config.enabled) return;
         
-        // Use the regex pattern match: (?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+was\s+(promoted|demoted)\s+from\s+(.+?)\s+to\s+(.+?)$
-        const match = context.raw.match(/(?:\[.*?\]\s*)?(\w{2,17})(?:\s*\[.*?\])?\s+was\s+(promoted|demoted)\s+from\s+(.+?)\s+to\s+(.+?)$/i);
+        // Pattern: [MVP++] D_Jaystar was promoted from Elite Member to Doge
+        // Core pattern: /^(\[.*])?\s*(\w{2,17}).*? was (promoted|demoted) from (.*) to (.*)$/
+        const match = context.raw.match(/^(\[.*])?\s*(\w{2,17}).*? was (promoted|demoted) from (.*) to (.*)$/);
         if (!match) {
             if (this.config.debugMode) {
                 api.log.warn(`Promote/Demote pattern didn't match: "${context.raw}"`);
@@ -1380,10 +1399,10 @@ class StaffManagementExtension {
             return;
         }
         
-        const playerName = match[1];  // First capture group is the username
-        const action = match[2];      // Second capture group is 'promoted' or 'demoted'
-        const fromRank = match[3];    // Third capture group is the from rank
-        const toRank = match[4];      // Fourth capture group is the to rank
+        const playerName = match[2];  // Second capture group is the username
+        const action = match[3];      // Third capture group is 'promoted' or 'demoted'
+        const fromRank = match[4];    // Fourth capture group is the from rank
+        const toRank = match[5];      // Fifth capture group is the to rank
         
         if (action.toLowerCase() === 'promoted') {
             await this.logEvent('promotion', playerName);
@@ -1397,8 +1416,10 @@ class StaffManagementExtension {
     private async handleGuildLevelUpLog(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
         if (!this.config.enabled) return;
         
-        // Use the regex pattern match: The\s+Guild\s+has\s+reached\s+Level\s+(\d+)!?$
-        const match = context.raw.match(/The\s+Guild\s+has\s+reached\s+Level\s+(\d+)!?$/i);
+        // Pattern:                    The Guild has reached Level 123!
+        // Core pattern: /^\s{19}The Guild has reached Level (\d*)!$/
+        // Note: Hypixel adds 19 spaces before the message
+        const match = context.raw.match(/^\s{19}The Guild has reached Level (\d*)!$/);
         if (!match) {
             if (this.config.debugMode) {
                 api.log.warn(`Guild level up pattern didn't match: "${context.raw}"`);
@@ -1407,15 +1428,17 @@ class StaffManagementExtension {
         }
         
         const newLevel = match[1];
-        await this.logEvent('guildLevelUp', 'GUILD');
+        await this.logEvent('levelup', 'GUILD');
         api.log.info(`Logged guild level up to level ${newLevel}!`);
     }
 
     private async handleQuestCompleteLog(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
         if (!this.config.enabled) return;
         
-        // Use the regex pattern match: GUILD\s+QUEST\s+COMPLETED!?$
-        const match = context.raw.match(/GUILD\s+QUEST\s+COMPLETED!?$/i);
+        // Pattern:                 GUILD QUEST COMPLETED!
+        // Core pattern: /^\s{17}GUILD QUEST COMPLETED!$/
+        // Note: Hypixel adds 17 spaces before the message
+        const match = context.raw.match(/^\s{17}GUILD QUEST COMPLETED!$/);
         if (!match) {
             if (this.config.debugMode) {
                 api.log.warn(`Quest complete pattern didn't match: "${context.raw}"`);
@@ -1423,15 +1446,17 @@ class StaffManagementExtension {
             return;
         }
         
-        await this.logEvent('questComplete', 'GUILD');
+        await this.logEvent('quest', 'GUILD');
         api.log.info(`Logged guild quest completion!`);
     }
 
     private async handleQuestTierCompleteLog(context: ChatMessageContext, api: ExtensionAPI): Promise<void> {
         if (!this.config.enabled) return;
         
-        // Use the regex pattern match: GUILD\s+QUEST\s+TIER\s+(\d+)\s+COMPLETED!?$
-        const match = context.raw.match(/GUILD\s+QUEST\s+TIER\s+(\d+)\s+COMPLETED!?$/i);
+        // Pattern:                 GUILD QUEST TIER 1 COMPLETED!
+        // Core pattern: /^\s{17}GUILD QUEST TIER (\d*) COMPLETED!$/
+        // Note: Hypixel adds 17 spaces before the message
+        const match = context.raw.match(/^\s{17}GUILD QUEST TIER (\d*) COMPLETED!$/);
         if (!match) {
             if (this.config.debugMode) {
                 api.log.warn(`Quest tier complete pattern didn't match: "${context.raw}"`);
@@ -1440,7 +1465,7 @@ class StaffManagementExtension {
         }
         
         const tier = match[1];
-        await this.logEvent('questComplete', 'GUILD');
+        await this.logEvent('quest', 'GUILD');
         api.log.info(`Logged guild quest tier ${tier} completion!`);
     }
 
@@ -1652,7 +1677,7 @@ class StaffManagementExtension {
                         }
                     ],
                     footer: {
-                        text: 'Automated daily report at 6 PM EST • Use !statsreport or !weeklyreport for more'
+                        text: 'Automated daily report • Use !statsreport or !weeklyreport for more'
                     },
                     timestamp: new Date().toISOString()
                 };

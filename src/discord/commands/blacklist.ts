@@ -54,7 +54,10 @@ export default {
     run: async (bridge, interaction, args) => {
         const type = interaction.options.getSubcommand() as 'add' | 'remove';
         const mojangProfile = await fetchMojangProfile(args[0] as string);
-        const blacklist = _blacklist as BlacklistEntry[];
+        
+        // Handle both old array format and new object format
+        const blacklistData = _blacklist as any;
+        const blacklist = Array.isArray(blacklistData) ? blacklistData : (blacklistData.bans || []);
 
         if (isFetchError(mojangProfile)) {
             const embed = fetchErrorEmbed(mojangProfile);
@@ -62,7 +65,7 @@ export default {
             return;
         }
 
-        const isOnBlacklist = blacklist.some((user) => user.uuid === mojangProfile.id);
+        const isOnBlacklist = blacklist.some((user: BlacklistEntry) => user.uuid === mojangProfile.id);
         if ((type === 'add' && isOnBlacklist) || (type === 'remove' && !isOnBlacklist)) {
             const embed = new EmbedBuilder()
                 .setColor('Red')
@@ -103,10 +106,13 @@ export default {
                 endDate,
                 reason,
                 messageId: blacklistMessage.id,
+                bannedBy: interaction.user.username,
+                bannedAt: new Date().toISOString(),
+                type: 'guild'
             });
         } else {
-            const blacklistEntry = blacklist.find((user) => user.uuid === mojangProfile.id)!;
-            blacklist.splice(blacklist.indexOf(blacklistEntry));
+            const blacklistEntry = blacklist.find((user: BlacklistEntry) => user.uuid === mojangProfile.id)!;
+            blacklist.splice(blacklist.indexOf(blacklistEntry), 1);
 
             const message = await (
                 bridge.discord.channels.cache.get(env.BLACKLIST_CHANNEL_ID) as TextChannel
@@ -124,7 +130,8 @@ export default {
                 } the blacklist!`
             );
 
-        writeToJsonFile('./src/blacklist/_blacklist.json', blacklist, interaction, successEmbed);
+        // Write in new format
+        writeToJsonFile('./src/blacklist/_blacklist.json', { bans: blacklist }, interaction, successEmbed);
     },
     staffOnly: true,
 } as Command;

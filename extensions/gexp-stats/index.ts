@@ -159,20 +159,34 @@ class GEXPStatsExtension {
     private processingRequests: Set<string> = new Set();
     private cleanupInterval: NodeJS.Timeout | null = null;
 
-    // Default configuration
-    private defaultConfig = {
-        enabled: true,
-        hypixelApiKey: process.env.HYPIXEL_API_KEY || '',
-        cleanupInterval: 5 * 60 * 1000, // Clean up old cooldowns every 5 minutes
-        guildRankCooldowns: {
-            'GM': 0,      // No cooldown for Guild Master
-            'Leader': 10,          // 10 seconds for Leaders
-            'SBMAIN': 12,          // 12 seconds for SBMAIN
-            'Elite': 15,           // 15 seconds for Elites
-            'Mod': 20,       // 20 seconds for Moderators  
-            'Member': 60           // 60 seconds for Members
-        }
-    };
+    // Helper to build cooldowns from environment
+    private buildGuildRankCooldowns(): Record<string, number> {
+        const cooldowns: Record<string, number> = {};
+        
+        // Use environment variable rank names
+        if (process.env.RANK_1) cooldowns[process.env.RANK_1] = parseInt(process.env.COOLDOWN_RANK_1!);
+        if (process.env.RANK_2) cooldowns[process.env.RANK_2] = parseInt(process.env.COOLDOWN_RANK_2!);
+        if (process.env.RANK_3) cooldowns[process.env.RANK_3] = parseInt(process.env.COOLDOWN_RANK_3!);
+        if (process.env.RANK_4) cooldowns[process.env.RANK_4] = parseInt(process.env.COOLDOWN_RANK_4!);
+        if (process.env.RANK_5) cooldowns[process.env.RANK_5] = parseInt(process.env.COOLDOWN_RANK_5!);
+        if (process.env.RANK_LEADER) cooldowns[process.env.RANK_LEADER] = parseInt(process.env.COOLDOWN_LEADER!);
+        
+        // Add common variations
+        cooldowns['GM'] = parseInt(process.env.COOLDOWN_LEADER!);
+        cooldowns['Moderator'] = parseInt(process.env.COOLDOWN_RANK_2!);
+        
+        return cooldowns;
+    }
+
+    // Default configuration  
+    private get defaultConfig() {
+        return {
+            enabled: true,
+            hypixelApiKey: process.env.HYPIXEL_API_KEY || '',
+            cleanupInterval: 5 * 60 * 1000, // Clean up old cooldowns every 5 minutes
+            guildRankCooldowns: this.buildGuildRankCooldowns()
+        };
+    }
 
     /**
      * Initialize the extension
@@ -246,7 +260,7 @@ class GEXPStatsExtension {
             const cooldownRemaining = this.isOnCooldown(requester, context.guildRank, Date.now());
             if (cooldownRemaining !== null && cooldownRemaining > 0) {
                 const message = `${requester}, you can only use this command again in ${cooldownRemaining} seconds. Please wait. | ${getRandomHexColor()}`;
-                api.chat.sendGuildChat(message);
+                this.sendToChannel(context, api, message);
                 return;
             }        // Mark request as processing and set cooldown
         this.processingRequests.add(requestKey);
@@ -258,20 +272,20 @@ class GEXPStatsExtension {
             // Fetch Mojang profile
             const mojangProfile = await fetchMojangProfile(target);
             if (isFetchError(mojangProfile)) {
-                this.handleFetchError(mojangProfile, requester, target, api);
+                this.handleFetchError(mojangProfile, requester, target, api, context);
                 return;
             }
 
             // Fetch guild data
             const guild = await this.fetchHypixelGuild(mojangProfile.id);
             if (isFetchError(guild)) {
-                this.handleFetchError(guild, requester, target, api);
+                this.handleFetchError(guild, requester, target, api, context);
                 return;
             }
 
             if (!guild) {
                 const message = `${requester}, the player ${target} is not in a guild. | ${getRandomHexColor()}`;
-                api.chat.sendGuildChat(message);
+                this.sendToChannel(context, api, message);
                 return;
             }
 
@@ -279,7 +293,7 @@ class GEXPStatsExtension {
             const guildMember = guild.members.find((m: GuildMember) => m.uuid === mojangProfile.id);
             if (!guildMember) {
                 const message = `${requester}, ${target} is not found in their guild. | ${getRandomHexColor()}`;
-                api.chat.sendGuildChat(message);
+                this.sendToChannel(context, api, message);
                 return;
             }
 
@@ -378,7 +392,7 @@ class GEXPStatsExtension {
     /**
      * Handle fetch errors
      */
-    private handleFetchError(error: FetchError, requester: string, target: string, api: ExtensionAPI): void {
+    private handleFetchError(error: FetchError, requester: string, target: string, api: ExtensionAPI, context: ChatMessageContext): void {
         let message: string;
         
         if (error.status === 404) {
@@ -389,7 +403,7 @@ class GEXPStatsExtension {
             message = `${requester}, API error occurred while fetching data for ${target}. Please try again later. | ${getRandomHexColor()}`;
         }
         
-        api.chat.sendGuildChat(message);
+        this.sendToChannel(context, api, message);
         api.log.warn(`Fetch error for ${target}: ${error.status} - ${error.statusText}`);
     }
 

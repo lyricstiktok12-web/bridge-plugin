@@ -62,7 +62,7 @@ export class CooldownManager {
         }
 
         // Try without brackets
-        const rankWithoutBrackets = guildRank.replace(/[\[\]]/g, '');
+        const rankWithoutBrackets = guildRank.replace(/[[\]]/g, '');
         if (this.rankCooldowns.has(rankWithoutBrackets)) {
             return this.rankCooldowns.get(rankWithoutBrackets)!;
         }

@@ -288,8 +288,8 @@ export class MineflayerExtensionManager extends EventEmitter {
                 message: match[5] || '',
                 username: match[3] || '',
                 channel: match[1] as 'Guild' | 'Officer',
-                rank: match[2] ? match[2].replace(/[\[\]]/g, '') : undefined, // Hypixel rank (remove brackets)
-                guildRank: match[4] ? match[4].replace(/[\[\]]/g, '') : undefined, // Guild rank (remove brackets)
+                rank: match[2] ? match[2].replace(/[[\]]/g, '') : undefined, // Hypixel rank (remove brackets)
+                guildRank: match[4] ? match[4].replace(/[[\]]/g, '') : undefined, // Guild rank (remove brackets)
                 timestamp: new Date(),
                 raw: rawMessage
             };

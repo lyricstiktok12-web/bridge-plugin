@@ -1481,7 +1481,7 @@ class StaffManagementExtension {
         let totalJoins = 0;
         let totalLeaves = 0;
         let totalKicks = 0;
-        let activeUsers = new Set<string>();
+        const activeUsers = new Set<string>();
         
         for (let d = new Date(weekAgo); d <= today; d.setDate(d.getDate() + 1)) {
             const dateStr = d.toISOString().split('T')[0];
@@ -1520,7 +1520,7 @@ class StaffManagementExtension {
         let totalJoins = 0;
         let totalLeaves = 0;
         let totalKicks = 0;
-        let activeUsers = new Set<string>();
+        const activeUsers = new Set<string>();
         
         for (let d = new Date(monthAgo); d <= today; d.setDate(d.getDate() + 1)) {
             const dateStr = d.toISOString().split('T')[0];

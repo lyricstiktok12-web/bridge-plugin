@@ -1,0 +1,11 @@
+[phases.install]
+cmds = ["pnpm install"]
+```
+
+This overrides the default Nixpacks behavior and removes `--frozen-lockfile`.
+
+## **Alternative: Add `.npmrc` file**
+
+Create a file called `.npmrc` in your repository root:
+```
+frozen-lockfile=false

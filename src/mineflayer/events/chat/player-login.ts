@@ -34,13 +34,11 @@ export default {
   name: 'message',
   runOnce: false,
   run(bridge: Bridge, message: any) {
-    // Access bot through bridge.mineflayer instead of direct bot property
     const bot = (bridge.mineflayer as any).bot as Bot;
     if (!bot) return;
     
     const messageText = message.toString();
     
-    // Pattern for when a guild member logs into Hypixel
     const loginPattern = /Guild > (\w+) joined\./;
     const match = messageText.match(loginPattern);
     
@@ -48,9 +46,15 @@ export default {
       const playerName = match[1];
       const botUsername = bot.username || '';
       
-      // Don't greet ourselves
       if (playerName === botUsername) return;
       
-      // Check cooldown
       if (canGreet(playerName)) {
-        const greeting = getRandomGre
+        const greeting = getRandomGreeting(playerName);
+        
+        setTimeout(() => {
+          bot.chat(`/gc ${greeting}`);
+        }, 500);
+      }
+    }
+  }
+};

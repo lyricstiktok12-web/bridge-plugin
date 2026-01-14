@@ -2,7 +2,12 @@
 cmds = ["pnpm install --no-frozen-lockfile"]
 
 [phases.build]
-cmds = ["pnpm run build"]
+cmds = [
+  "echo 'Starting build...'",
+  "ls -la",
+  "pnpm run build || echo 'Build failed!'",
+  "ls -la dist || echo 'dist folder not created'"
+]
 
 [start]
 cmd = "pnpm start"

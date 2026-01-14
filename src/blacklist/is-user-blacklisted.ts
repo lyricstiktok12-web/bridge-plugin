@@ -3,4 +3,5 @@ export function isUserBlacklisted(uuid: string): boolean {
   return false;
 }
 
-export default { users: [], guilds: [] };
+export const blacklist = { users: [], guilds: [] };
+export default isUserBlacklisted;

@@ -4,7 +4,7 @@ import Bridge from '../../../bridge';
 const greetingCooldowns = new Map<string, number>();
 const COOLDOWN_TIME = 5 * 60 * 1000; // 5 minutes cooldown per player
 
-const greetings = [
+const greetings: string[] = [
   'Welcome back, {player}! 👋',
   'Hey {player}, good to see you! ✨',
   '{player} is here! 🎉',
@@ -14,7 +14,7 @@ const greetings = [
 
 function getRandomGreeting(playerName: string): string {
   const randomIndex = Math.floor(Math.random() * greetings.length);
-  const greeting = greetings[randomIndex];
+  const greeting = greetings[randomIndex] || greetings[0];
   return greeting.replace('{player}', playerName);
 }
 
@@ -34,7 +34,8 @@ export default {
   name: 'message',
   runOnce: false,
   run(bridge: Bridge, message: any) {
-    const bot = bridge.mineflayer.bot;
+    // Access bot through bridge.mineflayer instead of direct bot property
+    const bot = (bridge.mineflayer as any).bot as Bot;
     if (!bot) return;
     
     const messageText = message.toString();
@@ -52,13 +53,4 @@ export default {
       
       // Check cooldown
       if (canGreet(playerName)) {
-        const greeting = getRandomGreeting(playerName);
-        
-        // Send to guild chat
-        setTimeout(() => {
-          bot.chat(`/gc ${greeting}`);
-        }, 500);
-      }
-    }
-  }
-};
+        const greeting = getRandomGre

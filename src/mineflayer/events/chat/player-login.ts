@@ -1,4 +1,5 @@
 import { Bot } from 'mineflayer';
+import Bridge from '../../../bridge';
 
 const greetingCooldowns = new Map<string, number>();
 const COOLDOWN_TIME = 5 * 60 * 1000; // 5 minutes cooldown per player
@@ -12,7 +13,8 @@ const greetings = [
 ];
 
 function getRandomGreeting(playerName: string): string {
-  const greeting = greetings[Math.floor(Math.random() * greetings.length)];
+  const randomIndex = Math.floor(Math.random() * greetings.length);
+  const greeting = greetings[randomIndex];
   return greeting.replace('{player}', playerName);
 }
 
@@ -28,18 +30,22 @@ function canGreet(playerName: string): boolean {
   return false;
 }
 
-export function handlePlayerLogin(bot: Bot) {
-  bot.on('message', (message) => {
+export default {
+  name: 'message',
+  runOnce: false,
+  run(bridge: Bridge, message: any) {
+    const bot = bridge.mineflayer.bot;
+    if (!bot) return;
+    
     const messageText = message.toString();
     
     // Pattern for when a guild member logs into Hypixel
-    // Usually shows as "Guild > PlayerName joined."
     const loginPattern = /Guild > (\w+) joined\./;
     const match = messageText.match(loginPattern);
     
-    if (match) {
+    if (match && match[1]) {
       const playerName = match[1];
-      const botUsername = bot.username;
+      const botUsername = bot.username || '';
       
       // Don't greet ourselves
       if (playerName === botUsername) return;
@@ -51,8 +57,8 @@ export function handlePlayerLogin(bot: Bot) {
         // Send to guild chat
         setTimeout(() => {
           bot.chat(`/gc ${greeting}`);
-        }, 500); // Small delay to avoid rate limiting
+        }, 500);
       }
     }
-  });
-}
+  }
+};

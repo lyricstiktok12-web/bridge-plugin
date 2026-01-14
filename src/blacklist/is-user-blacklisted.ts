@@ -1,6 +1,6 @@
-let blacklist: any = { users: [], guilds: [] };
-try {
-  blacklist = require('./_blacklist.json');
-} catch (e) {
-  // File doesn't exist, use empty blacklist
+// Blacklist feature disabled
+export function isUserBlacklisted(uuid: string): boolean {
+  return false;
 }
+
+export default { users: [], guilds: [] };

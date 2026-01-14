@@ -14,7 +14,8 @@ const greetings: string[] = [
 
 function getRandomGreeting(playerName: string): string {
   const randomIndex = Math.floor(Math.random() * greetings.length);
-  const greeting = greetings[randomIndex] || greetings[0];
+  const greeting = greetings[randomIndex];
+  if (!greeting) return `Welcome back, ${playerName}!`;
   return greeting.replace('{player}', playerName);
 }
 

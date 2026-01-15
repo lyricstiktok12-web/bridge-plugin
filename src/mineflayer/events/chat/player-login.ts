@@ -3,21 +3,30 @@ import Bridge from '../../../bridge';
 
 const greetings: string[] = [
   'Welcome back, {player}!',
-  '{player} just logged in—welcome!',
+  '{player} just logged in, welcome!',
   'Hello {player}!',
   '{player} has entered the chat!',
   'Good to see you, {player}!',
-  'Yo {player}!'
+  'How are you {player}!',
+  'Hey {player}!',
+  '{player} is back!',
+  'Welcome, {player}!',
+  'Hi {player}!',
+  '{player} joined!',
+  'Greetings {player}!'
 ];
 
-let lastMessage: string = '';
+// Track last greeting per player
+const lastPlayerGreetings = new Map<string, string>();
 
 function getRandomGreeting(playerName: string): string {
   let greeting: string;
   let attempts = 0;
-  const maxAttempts = 10;
+  const maxAttempts = 20;
   
-  // Keep trying until we get a different message than the last one
+  const lastGreeting = lastPlayerGreetings.get(playerName);
+  
+  // Keep trying until we get a different message than the last one for this player
   do {
     const randomIndex = Math.floor(Math.random() * greetings.length);
     const template = greetings[randomIndex];
@@ -27,9 +36,10 @@ function getRandomGreeting(playerName: string): string {
       greeting = template.replace('{player}', playerName);
     }
     attempts++;
-  } while (greeting === lastMessage && attempts < maxAttempts);
+  } while (greeting === lastGreeting && attempts < maxAttempts);
   
-  lastMessage = greeting;
+  // Store this greeting for this player
+  lastPlayerGreetings.set(playerName, greeting);
   return greeting;
 }
 
@@ -55,7 +65,7 @@ export default {
       
       setTimeout(() => {
         bot.chat(`/gc ${greeting}`);
-      }, 1500); // Changed to 1.5 seconds
+      }, 800);
     }
   }
 };

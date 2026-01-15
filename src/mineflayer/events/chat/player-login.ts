@@ -65,7 +65,7 @@ export default {
       
       setTimeout(() => {
         bot.chat(`/gc ${greeting}`);
-      }, 800);
+      }, 1000);
     }
   }
 };

@@ -58,8 +58,8 @@ export default {
 
     const messageText = message.toString();
 
-    // Check for !bw command in guild chat
-    const bwPattern = /Guild > (\w+): !bw (\w+)/;
+    // Check for !bw command in guild chat (handles rank tags like [MVP++], [Staff], etc.)
+    const bwPattern = /Guild > (?:\[.+?\] )?(\w+)(?: \[.+?\])?: !bw (\w+)/;
     const match = messageText.match(bwPattern);
 
     if (match && match[2]) {

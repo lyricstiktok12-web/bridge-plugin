@@ -4,25 +4,33 @@ import Bridge from '../../../bridge';
 const greetings: string[] = [
   'Welcome back, {player}!',
   '{player} just logged in—welcome!',
-  'Hey {player}',
-  'Welcome, {player}'
+  'Hello {player}!',
+  '{player} has entered the chat!',
+  'Good to see you, {player}!',
+  'Yo {player}!'
 ];
 
-let lastGreetingIndex: number = -1;
+let lastMessage: string = '';
 
 function getRandomGreeting(playerName: string): string {
-  let randomIndex: number;
+  let greeting: string;
+  let attempts = 0;
+  const maxAttempts = 10;
   
-  // Ensure we don't pick the same greeting twice in a row
+  // Keep trying until we get a different message than the last one
   do {
-    randomIndex = Math.floor(Math.random() * greetings.length);
-  } while (randomIndex === lastGreetingIndex && greetings.length > 1);
+    const randomIndex = Math.floor(Math.random() * greetings.length);
+    const template = greetings[randomIndex];
+    if (!template) {
+      greeting = `Welcome back, ${playerName}!`;
+    } else {
+      greeting = template.replace('{player}', playerName);
+    }
+    attempts++;
+  } while (greeting === lastMessage && attempts < maxAttempts);
   
-  lastGreetingIndex = randomIndex;
-  
-  const greeting = greetings[randomIndex];
-  if (!greeting) return `Welcome back, ${playerName}!`;
-  return greeting.replace('{player}', playerName);
+  lastMessage = greeting;
+  return greeting;
 }
 
 export default {

@@ -8,8 +8,18 @@ const greetings: string[] = [
   'Welcome, {player}'
 ];
 
+let lastGreetingIndex: number = -1;
+
 function getRandomGreeting(playerName: string): string {
-  const randomIndex = Math.floor(Math.random() * greetings.length);
+  let randomIndex: number;
+  
+  // Ensure we don't pick the same greeting twice in a row
+  do {
+    randomIndex = Math.floor(Math.random() * greetings.length);
+  } while (randomIndex === lastGreetingIndex && greetings.length > 1);
+  
+  lastGreetingIndex = randomIndex;
+  
   const greeting = greetings[randomIndex];
   if (!greeting) return `Welcome back, ${playerName}!`;
   return greeting.replace('{player}', playerName);

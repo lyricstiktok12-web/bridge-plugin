@@ -55,7 +55,7 @@ export default {
       
       setTimeout(() => {
         bot.chat(`/gc ${greeting}`);
-      }, 3000);
+      }, 1500); // Changed to 1.5 seconds
     }
   }
 };

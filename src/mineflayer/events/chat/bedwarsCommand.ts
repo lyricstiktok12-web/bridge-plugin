@@ -6,6 +6,9 @@ interface BedwarsStats {
   wins: number;
   finals: number;
   stars: number;
+  bblr: number;
+  wlr: number;
+  winstreak: number;
 }
 
 async function fetchBedwarsStats(username: string): Promise<BedwarsStats | null> {
@@ -40,9 +43,15 @@ async function fetchBedwarsStats(username: string): Promise<BedwarsStats | null>
     const deaths = bw.final_deaths_bedwars || 0;
     const fkdr = deaths > 0 ? parseFloat((finals / deaths).toFixed(2)) : finals;
     const wins = bw.wins_bedwars || 0;
+    const losses = bw.losses_bedwars || 0;
+    const wlr = losses > 0 ? parseFloat((wins / losses).toFixed(2)) : wins;
+    const bedsBroken = bw.beds_broken_bedwars || 0;
+    const bedsLost = bw.beds_lost_bedwars || 0;
+    const bblr = bedsLost > 0 ? parseFloat((bedsBroken / bedsLost).toFixed(2)) : bedsBroken;
     const stars = hypixelData.player.achievements?.bedwars_level || 0;
+    const winstreak = bw.winstreak || 0;
 
-    return { fkdr, wins, finals, stars };
+    return { fkdr, wins, finals, stars, bblr, wlr, winstreak };
   } catch (error) {
     console.error('Error fetching Bedwars stats:', error);
     return null;
@@ -73,7 +82,7 @@ export default {
         }
 
         // Format the response
-        const response = `${playerName}: ${stats.fkdr} FKDR | ${stats.wins.toLocaleString()} Wins | ${stats.finals.toLocaleString()} Finals | ${stats.stars}⭐`;
+        const response = `${playerName} (${stats.stars}⭐): ${stats.wins.toLocaleString()} Wins | ${stats.finals.toLocaleString()} Finals • Ratios: ${stats.fkdr} FKDR, ${stats.bblr} BBLR, ${stats.wlr} WLR`;
         
         bot.chat(`/gc ${response}`);
       }).catch(error => {

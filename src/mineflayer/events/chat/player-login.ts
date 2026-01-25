@@ -19,6 +19,9 @@ const greetings: string[] = [
 // Track last greeting per player
 const lastPlayerGreetings = new Map<string, string>();
 
+// Track last greeting time per player (for non-guild masters)
+const lastGreetingTime = new Map<string, number>();
+
 function getRandomGreeting(playerName: string): string {
   let greeting: string;
   let attempts = 0;
@@ -49,17 +52,35 @@ export default {
   run(bridge: Bridge, message: any) {
     const bot = (bridge.mineflayer as any).bot as Bot;
     if (!bot) return;
-
+    
     const messageText = message.toString();
-
     const loginPattern = /Guild > (\w+) joined\./;
     const match = messageText.match(loginPattern);
-
+    
     if (match && match[1]) {
       const playerName = match[1];
       const botUsername = bot.username || '';
       
       if (playerName === botUsername) return;
+      
+      // Check if this player is the guild master
+      const guildMaster = 'wtfmommy';
+      const isGuildMaster = playerName === guildMaster;
+      
+      // If not guild master, check cooldown
+      if (!isGuildMaster) {
+        const now = Date.now();
+        const lastTime = lastGreetingTime.get(playerName);
+        const tenMinutes = 10 * 60 * 1000; // 10 minutes in milliseconds
+        
+        if (lastTime && (now - lastTime) < tenMinutes) {
+          // Still in cooldown period, don't greet
+          return;
+        }
+        
+        // Update last greeting time
+        lastGreetingTime.set(playerName, now);
+      }
       
       const greeting = getRandomGreeting(playerName);
       
